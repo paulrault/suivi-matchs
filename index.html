@@ -5,57 +5,105 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Matchs de foot aujourd’hui</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .team-logo {
+      width: 30px;
+      height: 30px;
+      object-fit: contain;
+    }
+    .vs {
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin: 0 10px;
+    }
+  </style>
 </head>
 <body class="bg-light">
   <div class="container py-5">
-    <h1 class="text-center mb-4">Matchs de foot aujourd’hui</h1>
-    <div id="match-list" class="row g-4">
-      <!-- Matchs seront affichés ici -->
-    </div>
+    <h1 class="text-center mb-5">Matchs de foot aujourd’hui</h1>
+    <div id="match-list" class="row g-4"></div>
   </div>
 
   <script>
-    // Données fictives (mock)
-    const fakeMatches = [
+    // 🎯 Données fictives
+    const matches = [
       {
         competition: "Ligue 1",
-        homeTeam: "Paris Saint-Germain",
-        awayTeam: "Olympique Lyonnais",
         time: "20:45",
-        status: "À venir"
+        status: "En cours",
+        home: {
+          name: "Paris SG",
+          logo: "https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg",
+          score: 2
+        },
+        away: {
+          name: "Lyon",
+          logo: "https://upload.wikimedia.org/wikipedia/en/c/c6/Olympique_Lyonnais_logo.svg",
+          score: 1
+        }
       },
       {
         competition: "Premier League",
-        homeTeam: "Manchester City",
-        awayTeam: "Liverpool FC",
         time: "18:30",
-        status: "Terminé"
+        status: "Terminé",
+        home: {
+          name: "Man City",
+          logo: "https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg",
+          score: 1
+        },
+        away: {
+          name: "Liverpool",
+          logo: "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg",
+          score: 1
+        }
       },
       {
         competition: "Serie A",
-        homeTeam: "Juventus",
-        awayTeam: "AC Milan",
         time: "21:00",
-        status: "En cours"
+        status: "À venir",
+        home: {
+          name: "Juventus",
+          logo: "https://upload.wikimedia.org/wikipedia/commons/1/15/Juventus_FC_2017_logo.svg",
+          score: null
+        },
+        away: {
+          name: "AC Milan",
+          logo: "https://upload.wikimedia.org/wikipedia/commons/d/d0/Logo_of_AC_Milan.svg",
+          score: null
+        }
       }
     ];
 
-    const list = document.getElementById("match-list");
+    const matchList = document.getElementById("match-list");
 
-    fakeMatches.forEach(match => {
-      const el = document.createElement("div");
-      el.className = "col-md-6";
-      el.innerHTML = `
-        <div class="card p-3 shadow-sm">
-          <h5>${match.competition}</h5>
-          <p><strong>${match.homeTeam}</strong> vs <strong>${match.awayTeam}</strong></p>
-          <p>Heure : ${match.time}</p>
-          <p>Statut : ${match.status}</p>
+    matches.forEach(match => {
+      const col = document.createElement("div");
+      col.className = "col-md-6";
+
+      const scoreDisplay = match.home.score !== null ? `${match.home.score} - ${match.away.score}` : "vs";
+
+      col.innerHTML = `
+        <div class="card shadow-sm p-3">
+          <h5 class="text-muted">${match.competition}</h5>
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+              <img src="${match.home.logo}" class="team-logo me-2" alt="${match.home.name}">
+              <span>${match.home.name}</span>
+            </div>
+            <div class="vs text-center">${scoreDisplay}</div>
+            <div class="d-flex align-items-center">
+              <span>${match.away.name}</span>
+              <img src="${match.away.logo}" class="team-logo ms-2" alt="${match.away.name}">
+            </div>
+          </div>
+          <p class="mt-2 mb-0">Heure : ${match.time}</p>
+          <p class="mb-0">Statut : ${match.status}</p>
         </div>
       `;
-      list.appendChild(el);
+      matchList.appendChild(col);
     });
   </script>
 </body>
 </html>
+
 
