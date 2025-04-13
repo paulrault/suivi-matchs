@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Suivi des événements sportifs</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Planning Sportif</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     .team-logo {
@@ -16,142 +16,220 @@
       font-size: 1.2rem;
       margin: 0 10px;
     }
-    .live {
+    .live-indicator {
       color: red;
       font-weight: bold;
+    }
+    .card {
+      border-radius: 1rem;
     }
   </style>
 </head>
 <body class="bg-light">
-  <div class="container py-4">
-    <h1 class="text-center mb-4">🏁 Événements sportifs à venir</h1>
 
-    <div class="row mb-4">
-      <div class="col-md-4">
-        <label for="leagueSelect" class="form-label">🏆 Compétition</label>
-        <select id="leagueSelect" class="form-select">
-          <option value="all">Toutes</option>
-          <option value="Ligue 1">Ligue 1</option>
-          <option value="Premier League">Premier League</option>
-          <option value="Serie A">Serie A</option>
-          <option value="Bundesliga">Bundesliga</option>
-          <option value="La Liga">La Liga</option>
-          <option value="Eredivisie">Eredivisie</option>
-          <option value="F1">Formule 1</option>
-          <option value="MotoGP">MotoGP</option>
-          <option value="WRC">WRC</option>
-        </select>
-      </div>
-      <div class="col-md-4">
-        <label for="daySelect" class="form-label">📅 Jour</label>
-        <select id="daySelect" class="form-select">
-          <option value="0">Aujourd’hui</option>
-          <option value="1">Demain</option>
-          <option value="2">Après-demain</option>
-        </select>
-      </div>
-      <div class="col-md-4 d-flex align-items-end">
-        <button class="btn btn-outline-primary w-100" id="weekBtn">🔁 Semaine</button>
-      </div>
+<div class="container py-4">
+  <h1 class="text-center mb-4">🏟️ Planning Sportif</h1>
+
+  <!-- Filtres -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <label class="form-label">⚽ Sport</label>
+      <select id="sportSelect" class="form-select">
+        <option value="all">Tous</option>
+        <option value="football">Football</option>
+        <option value="basketball">Basketball</option>
+        <option value="rugby">Rugby</option>
+        <option value="F1">F1</option>
+        <option value="MotoGP">MotoGP</option>
+        <option value="WRC">WRC</option>
+      </select>
     </div>
-
-    <div id="match-list" class="row g-4"></div>
-    <p class="text-center mt-4 text-muted">🔄 Mise à jour auto toutes les 60 secondes</p>
+    <div class="col-md-4">
+      <label class="form-label">📅 Jour</label>
+      <select id="daySelect" class="form-select">
+        <option value="0">Aujourd'hui</option>
+        <option value="1">Demain</option>
+        <option value="2">Après-demain</option>
+      </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+      <button class="btn btn-outline-primary w-100" id="weekBtn">🔁 Afficher toute la semaine</button>
+    </div>
   </div>
 
-  <script>
-    const baseDate = new Date();
-    const getDateWithOffset = (offset) => {
-      const date = new Date(baseDate);
-      date.setDate(date.getDate() + offset);
-      return date.toISOString().split('T')[0];
-    };
+  <!-- Liste des matchs -->
+  <div id="match-list" class="row g-4"></div>
 
-    const isPayTV = (channel) => ["Canal+", "BeIN Sports", "DAZN"].includes(channel);
+  <!-- Formulaire admin -->
+  <div class="mt-5">
+    <h4>➕ Ajouter un événement (admin)</h4>
+    <form id="eventForm" class="row g-3">
+      <div class="col-md-4">
+        <input type="text" class="form-control" placeholder="Sport (ex: football)" id="formSport" required>
+      </div>
+      <div class="col-md-4">
+        <input type="text" class="form-control" placeholder="Compétition" id="formCompetition" required>
+      </div>
+      <div class="col-md-4">
+        <input type="date" class="form-control" id="formDate" required>
+      </div>
+      <div class="col-md-3">
+        <input type="time" class="form-control" id="formHeure" required>
+      </div>
+      <div class="col-md-3">
+        <input type="text" class="form-control" placeholder="Équipe domicile" id="formDomicile" required>
+      </div>
+      <div class="col-md-3">
+        <input type="text" class="form-control" placeholder="Équipe extérieur" id="formExterieur" required>
+      </div>
+      <div class="col-md-3">
+        <input type="text" class="form-control" placeholder="Chaîne (ex: beIN)" id="formChaine">
+      </div>
+      <div class="col-md-6">
+        <input type="url" class="form-control" placeholder="Lien chaîne (si payante)" id="formLienChaine">
+      </div>
+      <div class="col-md-3">
+        <select class="form-select" id="formPayant">
+          <option value="false">Gratuit</option>
+          <option value="true">Payant</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <select class="form-select" id="formLive">
+          <option value="false">Non en direct</option>
+          <option value="true">En direct</option>
+        </select>
+      </div>
+      <div class="col-12 text-end">
+        <button type="submit" class="btn btn-success">Ajouter</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-    const matches = [
-      { date: getDateWithOffset(0), competition: "Ligue 1", time: "20:45", status: "À venir", home: { name: "PSG", logo: "https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg", score: null }, away: { name: "Lyon", logo: "https://upload.wikimedia.org/wikipedia/en/c/c6/Olympique_Lyonnais_logo.svg", score: null }, channel: "Amazon Prime", stream: "https://www.amazon.fr" },
-      { date: getDateWithOffset(1), competition: "Premier League", time: "18:30", status: "À venir", home: { name: "Man City", logo: "https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg", score: null }, away: { name: "Liverpool", logo: "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg", score: null }, channel: "Canal+", stream: "https://www.canalplus.com" },
-      { date: getDateWithOffset(2), competition: "Serie A", time: "21:00", status: "À venir", home: { name: "Juventus", logo: "https://upload.wikimedia.org/wikipedia/commons/1/15/Juventus_FC_2017_logo.svg", score: null }, away: { name: "AC Milan", logo: "https://upload.wikimedia.org/wikipedia/commons/d/d0/Logo_of_AC_Milan.svg", score: null }, channel: "BeIN Sports", stream: "https://www.beinsports.com" },
-      { date: getDateWithOffset(3), competition: "Bundesliga", time: "19:00", status: "En cours", home: { name: "Bayern Munich", logo: "https://upload.wikimedia.org/wikipedia/en/1/1f/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg", score: 2 }, away: { name: "Dortmund", logo: "https://upload.wikimedia.org/wikipedia/commons/6/67/Borussia_Dortmund_logo.svg", score: 1 }, channel: "DAZN", stream: "https://www.dazn.com" },
-      { date: getDateWithOffset(1), competition: "F1", time: "15:00", status: "À venir", home: { name: "Grand Prix d'Italie", logo: "https://upload.wikimedia.org/wikipedia/commons/3/33/F1.svg" }, away: { name: "Monza", logo: "https://upload.wikimedia.org/wikipedia/commons/e/e7/Flag_of_Italy.svg" }, channel: "Canal+", stream: "https://www.canalplus.com/sport/f1" },
-      { date: getDateWithOffset(2), competition: "MotoGP", time: "14:00", status: "À venir", home: { name: "GP d'Espagne", logo: "https://upload.wikimedia.org/wikipedia/commons/5/56/MotoGP_logo.svg" }, away: { name: "Jerez", logo: "https://upload.wikimedia.org/wikipedia/commons/9/9a/Flag_of_Spain.svg" }, channel: "DAZN", stream: "https://www.dazn.com/fr-FR/sport" }
-    ];
+<!-- Firebase SDK + JS -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    const leagueSelect = document.getElementById('leagueSelect');
-    const daySelect = document.getElementById('daySelect');
-    const weekBtn = document.getElementById('weekBtn');
-    const matchList = document.getElementById('match-list');
+  const firebaseConfig = {
+    apiKey: "AIzaSyBToR5BXaPHsg8GgMosJBMompqUU1LBGG8",
+    authDomain: "planning-sports.firebaseapp.com",
+    projectId: "planning-sports",
+    storageBucket: "planning-sports.appspot.com",
+    messagingSenderId: "808656601330",
+    appId: "1:808656601330:web:02c6c6c54e4cc705d6d06b"
+  };
 
-    let showWeek = false;
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-    function getCountdownText(dateStr, timeStr) {
-      const matchDate = new Date(`${dateStr}T${timeStr}:00Z`);
-      const now = new Date();
-      const diff = matchDate - now;
-      if (diff <= 0 && diff > -7200000) return "<span class='live'>🔴 En direct</span>";
-      if (diff <= 0) return "Match terminé";
+  const sportSelect = document.getElementById("sportSelect");
+  const daySelect = document.getElementById("daySelect");
+  const weekBtn = document.getElementById("weekBtn");
+  const matchList = document.getElementById("match-list");
 
-      const minutes = Math.floor((diff / 1000 / 60) % 60);
-      const hours = Math.floor((diff / 1000 / 60 / 60));
-      return `Débute dans ${hours}h ${minutes}min`;
+  let showWeek = false;
+
+  const getDateWithOffset = offset => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toISOString().split("T")[0];
+  };
+
+  async function fetchEvents() {
+    const snapshot = await getDocs(collection(db, "evenements"));
+    return snapshot.docs.map(doc => doc.data());
+  }
+
+  function getCountdown(dateStr, timeStr) {
+    const matchDate = new Date(`${dateStr}T${timeStr}`);
+    const now = new Date();
+    const diff = matchDate - now;
+    if (diff <= 0) return `<span class="live-indicator">🔴 En direct</span>`;
+    const min = Math.floor((diff / 1000 / 60) % 60);
+    const hr = Math.floor((diff / 1000 / 60 / 60));
+    return `Débute dans ${hr}h ${min}min`;
+  }
+
+  async function renderMatches() {
+    const sport = sportSelect.value;
+    const dayOffset = parseInt(daySelect.value);
+    const targetDate = getDateWithOffset(dayOffset);
+    const all = await fetchEvents();
+
+    let filtered = all.filter(e => sport === "all" || e.sport === sport);
+    if (!showWeek) {
+      filtered = filtered.filter(e => e.date === targetDate);
     }
 
-    function renderMatches() {
-      const selectedLeague = leagueSelect.value;
-      const selectedDay = parseInt(daySelect.value);
-      const targetDate = getDateWithOffset(selectedDay);
+    matchList.innerHTML = "";
+    if (!filtered.length) {
+      matchList.innerHTML = "<p class='text-center'>Aucun événement</p>";
+      return;
+    }
 
-      let filtered = matches.filter(m => selectedLeague === "all" || m.competition === selectedLeague);
-      if (!showWeek) {
-        filtered = filtered.filter(m => m.date === targetDate);
-      }
+    filtered.forEach(e => {
+      const countdown = e.enCours === "true" || e.enCours === true
+        ? `<span class="live-indicator">🔴 En direct</span>`
+        : getCountdown(e.date, e.heure);
 
-      matchList.innerHTML = filtered.length ? "" : `<p class="text-center">Aucun événement trouvé.</p>`;
+      const chaine = e.chaine
+        ? (e.payant === "true" || e.payant === true
+            ? `<a href="${e.lienChaine}" target="_blank">📺 ${e.chaine} (payant)</a>`
+            : `📺 ${e.chaine}`)
+        : "—";
 
-      filtered.forEach(match => {
-        const isMotorsport = ["F1", "MotoGP", "WRC"].includes(match.competition);
-        const countdown = getCountdownText(match.date, match.time);
-
-        const div = document.createElement("div");
-        div.className = "col-md-6";
-        div.innerHTML = `
+      matchList.innerHTML += `
+        <div class="col-md-6">
           <div class="card p-3 shadow-sm">
-            <h6 class="text-muted">${match.competition} — ${match.date}</h6>
-            <div class="d-flex align-items-center justify-content-${isMotorsport ? "center" : "between"}">
-              <div class="d-flex align-items-center">
-                <img src="${match.home.logo}" class="team-logo me-2">
-                <span>${match.home.name}</span>
-              </div>
-              ${!isMotorsport ? `<div class="vs">${match.home.score != null ? `${match.home.score} - ${match.away.score}` : "vs"}</div>` : "<span class='mx-2'>—</span>"}
-              <div class="d-flex align-items-center">
-                <span>${match.away.name}</span>
-                <img src="${match.away.logo}" class="team-logo ms-2">
-              </div>
+            <h6 class="text-muted">${e.competition} — ${e.date} à ${e.heure}</h6>
+            <div class="d-flex align-items-center justify-content-between">
+              <div>${e.domicile}</div>
+              <div class="vs">vs</div>
+              <div>${e.exterieur}</div>
             </div>
-            <p class="mb-0 mt-2">Heure : ${match.time}</p>
-            <p class="mb-0">📺 Chaîne : ${isPayTV(match.channel) ? `<a href="${match.stream}" target="_blank">${match.channel}</a>` : match.channel}</p>
+            <p class="mt-2">${chaine}</p>
             <p class="text-primary">${countdown}</p>
           </div>
-        `;
-        matchList.appendChild(div);
-      });
-    }
+        </div>
+      `;
+    });
+  }
 
-    leagueSelect.addEventListener("change", renderMatches);
-    daySelect.addEventListener("change", () => { showWeek = false; renderMatches(); });
-    weekBtn.addEventListener("click", () => { showWeek = true; renderMatches(); });
-
-    setInterval(renderMatches, 60000);
+  sportSelect.addEventListener("change", renderMatches);
+  daySelect.addEventListener("change", () => {
+    showWeek = false;
     renderMatches();
-  </script>
+  });
+  weekBtn.addEventListener("click", () => {
+    showWeek = true;
+    renderMatches();
+  });
+
+  // Formulaire d'ajout
+  document.getElementById("eventForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const newEvent = {
+      sport: formSport.value,
+      competition: formCompetition.value,
+      date: formDate.value,
+      heure: formHeure.value,
+      domicile: formDomicile.value,
+      exterieur: formExterieur.value,
+      chaine: formChaine.value,
+      lienChaine: formLienChaine.value,
+      payant: formPayant.value === "true",
+      enCours: formLive.value === "true"
+    };
+    await addDoc(collection(db, "evenements"), newEvent);
+    alert("✅ Événement ajouté !");
+    renderMatches();
+    e.target.reset();
+  });
+
+  setInterval(renderMatches, 60000);
+  renderMatches();
+</script>
 </body>
 </html>
-
-
-
-
-
-
-
-
