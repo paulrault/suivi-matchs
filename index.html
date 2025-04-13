@@ -16,13 +16,18 @@
       font-size: 1.2rem;
       margin: 0 10px;
     }
+    .team-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+    }
   </style>
 </head>
 <body class="bg-light">
   <div class="container py-4">
     <h1 class="text-center mb-4">⚽ Matchs européens à venir</h1>
 
-    <!-- Filtres -->
     <div class="row mb-4">
       <div class="col-md-5">
         <label for="leagueSelect" class="form-label">🏆 Choisir une ligue</label>
@@ -61,21 +66,58 @@
       return date.toISOString().split('T')[0];
     };
 
-    // 🌍 Données fictives sur plusieurs jours et ligues
     const matches = [
-      { date: getDateWithOffset(0), competition: "Ligue 1", time: "20:45", status: "À venir", home: { name: "PSG", logo: "https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg", score: null }, away: { name: "Lyon", logo: "https://upload.wikimedia.org/wikipedia/en/c/c6/Olympique_Lyonnais_logo.svg", score: null }},
-      { date: getDateWithOffset(1), competition: "Premier League", time: "18:30", status: "À venir", home: { name: "Man City", logo: "https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg", score: null }, away: { name: "Liverpool", logo: "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg", score: null }},
-      { date: getDateWithOffset(2), competition: "Serie A", time: "21:00", status: "À venir", home: { name: "Juventus", logo: "https://upload.wikimedia.org/wikipedia/commons/1/15/Juventus_FC_2017_logo.svg", score: null }, away: { name: "AC Milan", logo: "https://upload.wikimedia.org/wikipedia/commons/d/d0/Logo_of_AC_Milan.svg", score: null }},
-      { date: getDateWithOffset(3), competition: "Bundesliga", time: "19:00", status: "À venir", home: { name: "Bayern Munich", logo: "https://upload.wikimedia.org/wikipedia/en/1/1f/FC_Bayern_München_logo_%282017%29.svg", score: null }, away: { name: "Dortmund", logo: "https://upload.wikimedia.org/wikipedia/commons/6/67/Borussia_Dortmund_logo.svg", score: null }},
-      { date: getDateWithOffset(4), competition: "La Liga", time: "20:30", status: "À venir", home: { name: "Real Madrid", logo: "https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg", score: null }, away: { name: "Barcelona", logo: "https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg", score: null }},
-      { date: getDateWithOffset(5), competition: "Eredivisie", time: "16:00", status: "À venir", home: { name: "Ajax", logo: "https://upload.wikimedia.org/wikipedia/en/7/79/Ajax_Amsterdam.svg", score: null }, away: { name: "PSV", logo: "https://upload.wikimedia.org/wikipedia/en/2/21/PSV_Eindhoven.svg", score: null }}
+      {
+        date: getDateWithOffset(0),
+        competition: "Ligue 1",
+        time: "20:45",
+        status: "À venir",
+        home: { name: "PSG", logo: "https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg", score: null },
+        away: { name: "Lyon", logo: "https://upload.wikimedia.org/wikipedia/en/c/c6/Olympique_Lyonnais_logo.svg", score: null },
+        broadcast: { name: "Amazon Prime", paid: true, url: "https://www.amazon.fr/gp/video/storefront" }
+      },
+      {
+        date: getDateWithOffset(1),
+        competition: "Premier League",
+        time: "18:30",
+        status: "À venir",
+        home: { name: "Man City", logo: "https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg", score: null },
+        away: { name: "Liverpool", logo: "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg", score: null },
+        broadcast: { name: "RMC Sport", paid: true, url: "https://rmcsport.bfmtv.com" }
+      },
+      {
+        date: getDateWithOffset(2),
+        competition: "Serie A",
+        time: "21:00",
+        status: "À venir",
+        home: { name: "Juventus", logo: "https://upload.wikimedia.org/wikipedia/commons/1/15/Juventus_FC_2017_logo.svg", score: null },
+        away: { name: "AC Milan", logo: "https://upload.wikimedia.org/wikipedia/commons/d/d0/Logo_of_AC_Milan.svg", score: null },
+        broadcast: { name: "beIN Sports", paid: true, url: "https://www.beinsports.com/france/" }
+      },
+      {
+        date: getDateWithOffset(3),
+        competition: "Bundesliga",
+        time: "19:00",
+        status: "À venir",
+        home: { name: "Bayern Munich", logo: "https://upload.wikimedia.org/wikipedia/en/1/1f/FC_Bayern_München_logo_%282017%29.svg", score: null },
+        away: { name: "Dortmund", logo: "https://upload.wikimedia.org/wikipedia/commons/6/67/Borussia_Dortmund_logo.svg", score: null },
+        broadcast: { name: "Canal+", paid: true, url: "https://www.canalplus.com/direct" }
+      },
+      {
+        date: getDateWithOffset(4),
+        competition: "La Liga",
+        time: "20:30",
+        status: "À venir",
+        home: { name: "Real Madrid", logo: "https://upload.wikimedia.org/wikipedia/en/5/56/Real_Madrid_CF.svg", score: null },
+        away: { name: "Barcelona", logo: "https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg", score: null },
+        broadcast: { name: "L'Équipe TV", paid: false }
+      }
     ];
 
     const leagueSelect = document.getElementById('leagueSelect');
     const daySelect = document.getElementById('daySelect');
     const weekBtn = document.getElementById('weekBtn');
     const matchList = document.getElementById('match-list');
-
     let showWeek = false;
 
     function getCountdownText(dateStr, timeStr) {
@@ -112,6 +154,13 @@
         const scoreDisplay = match.home.score !== null ? `${match.home.score} - ${match.away.score}` : "vs";
         const countdown = getCountdownText(match.date, match.time);
 
+        const broadcastInfo = match.broadcast ? `
+          <p class="mb-0">📺 Diffusion : 
+            ${match.broadcast.paid ? 
+              `<a href="${match.broadcast.url}" target="_blank" class="text-danger text-decoration-none fw-bold">${match.broadcast.name} 🔒</a>` :
+              `<span class="fw-semibold">${match.broadcast.name}</span>`}
+          </p>` : '';
+
         const div = document.createElement("div");
         div.className = "col-md-6";
         div.innerHTML = `
@@ -120,16 +169,17 @@
             <div class="d-flex align-items-center justify-content-between">
               <div class="d-flex align-items-center">
                 <img src="${match.home.logo}" class="team-logo me-2" alt="${match.home.name}">
-                <span>${match.home.name}</span>
+                <span class="team-name">${match.home.name}</span>
               </div>
               <div class="vs">${scoreDisplay}</div>
               <div class="d-flex align-items-center">
-                <span>${match.away.name}</span>
+                <span class="team-name">${match.away.name}</span>
                 <img src="${match.away.logo}" class="team-logo ms-2" alt="${match.away.name}">
               </div>
             </div>
             <p class="mb-0 mt-2">Heure : ${match.time}</p>
             <p class="text-primary">${countdown}</p>
+            ${broadcastInfo}
           </div>
         `;
         matchList.appendChild(div);
@@ -141,17 +191,15 @@
       showWeek = false;
       renderMatches();
     });
-
     weekBtn.addEventListener("click", () => {
       showWeek = true;
       renderMatches();
     });
 
-    // ⏱️ Rafraîchissement toutes les 60s
     setInterval(renderMatches, 60000);
-
     renderMatches();
   </script>
 </body>
 </html>
+
 
