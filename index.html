@@ -2,166 +2,187 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <title>Planning Sportif 🔥</title>
+  <title>Planning Sportif</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <style>
-    .team-logo { width: 30px; height: 30px; object-fit: contain; }
-    .live-badge { color: red; font-weight: bold; margin-left: 10px; }
-    #adminPanel { display: none; }
+    .team-logo {
+      width: 30px;
+      height: 30px;
+      object-fit: contain;
+    }
+    .vs {
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin: 0 10px;
+    }
+    .live-badge {
+      color: red;
+      font-weight: bold;
+      margin-left: 8px;
+    }
+    .pagination {
+      justify-content: center;
+    }
   </style>
 </head>
 <body class="bg-light">
   <div class="container py-4">
-    <h1 class="text-center mb-4">📅 Planning Sportif Multisport</h1>
+    <h1 class="text-center mb-4">🏟️ Planning Sportif</h1>
 
-    <div class="text-end mb-2">
-      <button id="loginBtn" class="btn btn-outline-primary btn-sm">Connexion Admin 🔐</button>
-      <button id="logoutBtn" class="btn btn-outline-danger btn-sm d-none">Déconnexion</button>
+    <!-- Filtres -->
+    <div class="row mb-4 g-3">
+      <div class="col-md-4">
+        <label class="form-label">🎮 Sport</label>
+        <select id="sportSelect" class="form-select">
+          <option value="all">Tous</option>
+          <option value="Football">Football</option>
+          <option value="Basketball">Basketball</option>
+          <option value="Sports mécaniques">Sports mécaniques</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">📅 Jour</label>
+        <select id="daySelect" class="form-select">
+          <option value="0">Aujourd’hui</option>
+          <option value="1">Demain</option>
+          <option value="2">Après-demain</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">🏆 Compétition</label>
+        <input type="text" id="competitionInput" class="form-control" placeholder="Ligue 1, NBA..." />
+      </div>
     </div>
 
-    <div id="adminPanel" class="mb-4 border rounded p-3 bg-white shadow-sm">
-      <h5>➕ Ajouter un match</h5>
-      <form id="matchForm" class="row g-2">
-        <input type="text" class="form-control" placeholder="Sport" id="sport" required>
-        <input type="text" class="form-control" placeholder="Compétition" id="competition" required>
-        <input type="date" class="form-control" id="date" required>
-        <input type="time" class="form-control" id="time" required>
-        <input type="text" class="form-control" placeholder="Équipe Domicile" id="homeName" required>
-        <input type="url" class="form-control" placeholder="Logo Domicile" id="homeLogo" required>
-        <input type="text" class="form-control" placeholder="Équipe Extérieure" id="awayName" required>
-        <input type="url" class="form-control" placeholder="Logo Extérieure" id="awayLogo" required>
-        <input type="text" class="form-control" placeholder="Chaîne TV" id="channelName" required>
-        <input type="url" class="form-control" placeholder="Lien Streaming (si payant)" id="channelUrl">
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="channelPaid">
-          <label class="form-check-label" for="channelPaid">Chaîne payante</label>
-        </div>
-        <button type="submit" class="btn btn-success mt-2">Ajouter</button>
-      </form>
+    <div class="mb-3 d-flex justify-content-between">
+      <button class="btn btn-outline-primary" id="weekBtn">🔁 Voir la semaine</button>
+      <p class="text-muted mb-0" id="refresh-note">🔄 Auto MAJ toutes les 60s</p>
     </div>
 
     <div id="match-list" class="row g-4"></div>
+    <nav>
+      <ul class="pagination mt-4" id="pagination"></ul>
+    </nav>
   </div>
 
-  <script type="module">
-    import { db, auth } from './firebase-config.js';
-    import { collection, addDoc, onSnapshot, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
-    import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+  <script>
+    const baseDate = new Date();
+    const getDateWithOffset = (offset) => {
+      const date = new Date(baseDate);
+      date.setDate(date.getDate() + offset);
+      return date.toISOString().split('T')[0];
+    };
+
+    // 🎯 Données fictives (intègre plus tard Firebase ici)
+    const matches = [
+      // Exemple football
+      { date: getDateWithOffset(0), time: "20:45", competition: "Ligue 1", sport: "Football", channel: { name: "Amazon Prime", paid: true, url: "https://primevideo.com" }, home: { name: "PSG", logo: "https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg", score: null }, away: { name: "Lyon", logo: "https://upload.wikimedia.org/wikipedia/en/c/c6/Olympique_Lyonnais_logo.svg", score: null } },
+      { date: getDateWithOffset(1), time: "18:30", competition: "Premier League", sport: "Football", channel: { name: "Canal+", paid: true, url: "https://www.canalplus.com" }, home: { name: "Man City", logo: "#", score: 1 }, away: { name: "Liverpool", logo: "#", score: 1 } },
+      { date: getDateWithOffset(2), time: "21:00", competition: "Serie A", sport: "Football", channel: { name: "BeIN", paid: true, url: "https://www.beinsports.com" }, home: { name: "Juventus", logo: "#", score: null }, away: { name: "AC Milan", logo: "#", score: null } },
+      { date: getDateWithOffset(3), time: "19:00", competition: "Bundesliga", sport: "Football", channel: { name: "Free Sports", paid: false, url: "https://freesports.tv" }, home: { name: "Bayern", logo: "#", score: null }, away: { name: "Dortmund", logo: "#", score: null } },
+      // Basket
+      { date: getDateWithOffset(2), time: "02:30", competition: "NBA", sport: "Basketball", channel: { name: "NBA League Pass", paid: true, url: "https://www.nba.com/leaguepass" }, home: { name: "Lakers", logo: "#", score: null }, away: { name: "Celtics", logo: "#", score: null } },
+      // F1
+      { date: getDateWithOffset(5), time: "15:00", competition: "F1 GP Espagne", sport: "Sports mécaniques", channel: { name: "F1 TV", paid: true, url: "https://www.f1tv.com" }, home: { name: "Ferrari", logo: "#", score: null }, away: { name: "Red Bull", logo: "#", score: null } }
+    ];
 
     const matchList = document.getElementById("match-list");
-    const matchForm = document.getElementById("matchForm");
-    const loginBtn = document.getElementById("loginBtn");
-    const logoutBtn = document.getElementById("logoutBtn");
-    const adminPanel = document.getElementById("adminPanel");
+    const pagination = document.getElementById("pagination");
+    const sportSelect = document.getElementById("sportSelect");
+    const daySelect = document.getElementById("daySelect");
+    const weekBtn = document.getElementById("weekBtn");
+    const competitionInput = document.getElementById("competitionInput");
 
-    // Connexion Google Admin
-    loginBtn.addEventListener("click", async () => {
-      const provider = new GoogleAuthProvider();
-      try {
-        await signInWithPopup(auth, provider);
-      } catch (err) {
-        alert("Erreur de connexion");
-        console.error(err);
-      }
-    });
+    let showWeek = false;
+    let currentPage = 1;
+    const matchesPerPage = 5;
 
-    logoutBtn.addEventListener("click", async () => {
-      await signOut(auth);
-    });
+    function getCountdownText(dateStr, timeStr) {
+      const matchDate = new Date(`${dateStr}T${timeStr}:00`);
+      const now = new Date();
+      const diff = matchDate - now;
 
-    onAuthStateChanged(auth, user => {
-      const isAdmin = user && user.email.endsWith("@gmail.com"); // tu peux adapter
-      if (isAdmin) {
-        adminPanel.style.display = "block";
-        loginBtn.classList.add("d-none");
-        logoutBtn.classList.remove("d-none");
-      } else {
-        adminPanel.style.display = "none";
-        loginBtn.classList.remove("d-none");
-        logoutBtn.classList.add("d-none");
-      }
-    });
+      if (diff <= 0 && diff > -2 * 60 * 60 * 1000) return "🔴 Match en cours";
+      if (diff <= -2 * 60 * 60 * 1000) return "✅ Terminé";
 
-    // Formulaire d'ajout de match
-    matchForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const data = {
-        sport: sport.value,
-        competition: competition.value,
-        date: date.value,
-        time: time.value,
-        home: { name: homeName.value, logo: homeLogo.value, score: null },
-        away: { name: awayName.value, logo: awayLogo.value, score: null },
-        channel: {
-          name: channelName.value,
-          paid: channelPaid.checked,
-          url: channelPaid.checked ? channelUrl.value : null
-        }
-      };
-      try {
-        await addDoc(collection(db, "matches"), data);
-        alert("✅ Match ajouté");
-        matchForm.reset();
-      } catch (err) {
-        console.error(err);
-        alert("Erreur lors de l’ajout");
-      }
-    });
+      const minutes = Math.floor((diff / 1000 / 60) % 60);
+      const hours = Math.floor((diff / 1000 / 60 / 60));
+      return `⏳ Dans ${hours}h ${minutes}min`;
+    }
 
-    // 🔄 Rendu en temps réel
-    const q = query(
-      collection(db, "matches"),
-      where("date", ">=", new Date().toISOString().split('T')[0]),
-      orderBy("date"),
-      orderBy("time")
-    );
+    function renderMatches() {
+      const sport = sportSelect.value;
+      const day = parseInt(daySelect.value);
+      const comp = competitionInput.value.toLowerCase();
+      const targetDate = getDateWithOffset(day);
 
-    onSnapshot(q, (snapshot) => {
-      const matches = snapshot.docs.map(doc => doc.data());
+      let filtered = matches.filter(m =>
+        (sport === "all" || m.sport === sport)
+        && (showWeek || m.date === targetDate)
+        && (comp === "" || m.competition.toLowerCase().includes(comp))
+      );
+
+      const totalPages = Math.ceil(filtered.length / matchesPerPage);
+      const start = (currentPage - 1) * matchesPerPage;
+      const paginated = filtered.slice(start, start + matchesPerPage);
+
       matchList.innerHTML = "";
-
-      if (matches.length === 0) {
-        matchList.innerHTML = `<p class="text-center">Aucun match à venir</p>`;
+      if (paginated.length === 0) {
+        matchList.innerHTML = `<p class="text-center">Aucun événement trouvé.</p>`;
+        pagination.innerHTML = "";
         return;
       }
 
-      matches.forEach(match => {
-        const isLive = isMatchLive(match.date, match.time);
-        const liveBadge = isLive ? `<span class="live-badge">🔴 EN DIRECT</span>` : "";
-
-        matchList.innerHTML += `
-          <div class="col-md-6">
-            <div class="card shadow-sm p-3">
-              <h6 class="text-muted">${match.sport} – ${match.competition} — ${match.date} ${liveBadge}</h6>
-              <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center">
-                  <img src="${match.home.logo}" class="team-logo me-2">
-                  <strong>${match.home.name}</strong>
-                </div>
-                <span>vs</span>
-                <div class="d-flex align-items-center">
-                  <strong>${match.away.name}</strong>
-                  <img src="${match.away.logo}" class="team-logo ms-2">
-                </div>
+      paginated.forEach(m => {
+        const live = getCountdownText(m.date, m.time).includes("🔴");
+        const div = document.createElement("div");
+        div.className = "col-md-6";
+        div.innerHTML = `
+          <div class="card shadow-sm p-3">
+            <h6 class="text-muted mb-1">${m.sport} — ${m.competition} — ${m.date}</h6>
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center">
+                <img src="${m.home.logo}" class="team-logo me-2" alt="${m.home.name}">
+                <span>${m.home.name}</span>
               </div>
-              <p class="mt-2 mb-1">⏰ ${match.time}</p>
-              <p class="mb-1">📺 ${match.channel.paid 
-                ? `<a href="${match.channel.url}" target="_blank">${match.channel.name} (payant)</a>` 
-                : match.channel.name}</p>
+              <div class="vs">${m.home.score ?? ""} - ${m.away.score ?? ""}</div>
+              <div class="d-flex align-items-center">
+                <span>${m.away.name}</span>
+                <img src="${m.away.logo}" class="team-logo ms-2" alt="${m.away.name}">
+              </div>
             </div>
+            <p class="mb-1 mt-2">Heure : ${m.time} ${live ? '<span class="live-badge">🔴 Live</span>' : ""}</p>
+            <p class="mb-0">📺 Diffusion : <a href="${m.channel.url}" target="_blank">${m.channel.name}${m.channel.paid ? " 🔒" : ""}</a></p>
+            <p class="text-primary">${getCountdownText(m.date, m.time)}</p>
           </div>
         `;
+        matchList.appendChild(div);
       });
-    });
 
-    function isMatchLive(dateStr, timeStr) {
-      const now = new Date();
-      const start = new Date(`${dateStr}T${timeStr}:00`);
-      const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
-      return now >= start && now <= end;
+      // Pagination
+      pagination.innerHTML = "";
+      for (let i = 1; i <= totalPages; i++) {
+        const li = document.createElement("li");
+        li.className = "page-item " + (i === currentPage ? "active" : "");
+        li.innerHTML = `<button class="page-link">${i}</button>`;
+        li.addEventListener("click", () => {
+          currentPage = i;
+          renderMatches();
+        });
+        pagination.appendChild(li);
+      }
     }
+
+    sportSelect.addEventListener("change", () => { currentPage = 1; renderMatches(); });
+    daySelect.addEventListener("change", () => { showWeek = false; currentPage = 1; renderMatches(); });
+    competitionInput.addEventListener("input", () => { currentPage = 1; renderMatches(); });
+    weekBtn.addEventListener("click", () => { showWeek = true; currentPage = 1; renderMatches(); });
+
+    setInterval(renderMatches, 60000);
+    renderMatches();
   </script>
 </body>
 </html>
+
 
