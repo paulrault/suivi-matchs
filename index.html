@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
+  <title>Suivi des matchs</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Matchs de foot aujourd’hui</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     .team-logo {
@@ -19,89 +20,136 @@
   </style>
 </head>
 <body class="bg-light">
-  <div class="container py-5">
-    <h1 class="text-center mb-5">Matchs de foot aujourd’hui</h1>
+  <div class="container py-4">
+    <h1 class="text-center mb-4">⚽ Suivi des matchs</h1>
+
+    <!-- Filtres -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <label for="leagueSelect" class="form-label">🏆 Choisir une ligue</label>
+        <select id="leagueSelect" class="form-select">
+          <option value="all">Toutes</option>
+          <option value="Ligue 1">Ligue 1</option>
+          <option value="Premier League">Premier League</option>
+          <option value="Serie A">Serie A</option>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label for="daySelect" class="form-label">📅 Sélectionner le jour</label>
+        <select id="daySelect" class="form-select">
+          <option value="0">Aujourd’hui</option>
+          <option value="1">Demain</option>
+          <option value="2">Après-demain</option>
+        </select>
+      </div>
+    </div>
+
     <div id="match-list" class="row g-4"></div>
   </div>
 
   <script>
-    // 🎯 Données fictives
+    // 📅 Calculer les dates
+    const baseDate = new Date();
+    const getDateWithOffset = (offset) => {
+      const date = new Date(baseDate);
+      date.setDate(date.getDate() + offset);
+      return date.toISOString().split('T')[0];
+    };
+
+    // ⚽ Données fictives avec dates
     const matches = [
       {
+        date: getDateWithOffset(0),
         competition: "Ligue 1",
         time: "20:45",
-        status: "En cours",
-        home: {
-          name: "Paris SG",
-          logo: "https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg",
-          score: 2
-        },
-        away: {
-          name: "Lyon",
-          logo: "https://upload.wikimedia.org/wikipedia/en/c/c6/Olympique_Lyonnais_logo.svg",
-          score: 1
-        }
+        status: "À venir",
+        home: { name: "PSG", logo: "https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg", score: null },
+        away: { name: "Lyon", logo: "https://upload.wikimedia.org/wikipedia/en/c/c6/Olympique_Lyonnais_logo.svg", score: null }
       },
       {
+        date: getDateWithOffset(1),
         competition: "Premier League",
         time: "18:30",
-        status: "Terminé",
-        home: {
-          name: "Man City",
-          logo: "https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg",
-          score: 1
-        },
-        away: {
-          name: "Liverpool",
-          logo: "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg",
-          score: 1
-        }
+        status: "À venir",
+        home: { name: "Man City", logo: "https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg", score: null },
+        away: { name: "Liverpool", logo: "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg", score: null }
       },
       {
+        date: getDateWithOffset(2),
         competition: "Serie A",
         time: "21:00",
         status: "À venir",
-        home: {
-          name: "Juventus",
-          logo: "https://upload.wikimedia.org/wikipedia/commons/1/15/Juventus_FC_2017_logo.svg",
-          score: null
-        },
-        away: {
-          name: "AC Milan",
-          logo: "https://upload.wikimedia.org/wikipedia/commons/d/d0/Logo_of_AC_Milan.svg",
-          score: null
-        }
+        home: { name: "Juventus", logo: "https://upload.wikimedia.org/wikipedia/commons/1/15/Juventus_FC_2017_logo.svg", score: null },
+        away: { name: "AC Milan", logo: "https://upload.wikimedia.org/wikipedia/commons/d/d0/Logo_of_AC_Milan.svg", score: null }
       }
     ];
 
-    const matchList = document.getElementById("match-list");
+    const leagueSelect = document.getElementById('leagueSelect');
+    const daySelect = document.getElementById('daySelect');
+    const matchList = document.getElementById('match-list');
 
-    matches.forEach(match => {
-      const col = document.createElement("div");
-      col.className = "col-md-6";
+    function getCountdownText(matchDateStr, matchTime) {
+      const matchDateTime = new Date(`${matchDateStr}T${matchTime}:00Z`);
+      const now = new Date();
+      const diff = matchDateTime - now;
 
-      const scoreDisplay = match.home.score !== null ? `${match.home.score} - ${match.away.score}` : "vs";
+      if (diff <= 0) return "Match en cours ou terminé";
 
-      col.innerHTML = `
-        <div class="card shadow-sm p-3">
-          <h5 class="text-muted">${match.competition}</h5>
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center">
-              <img src="${match.home.logo}" class="team-logo me-2" alt="${match.home.name}">
-              <span>${match.home.name}</span>
+      const minutes = Math.floor((diff / 1000 / 60) % 60);
+      const hours = Math.floor((diff / 1000 / 60 / 60));
+
+      return `Débute dans ${hours}h ${minutes}min`;
+    }
+
+    function renderMatches() {
+      const selectedLeague = leagueSelect.value;
+      const dayOffset = parseInt(daySelect.value);
+      const currentDate = getDateWithOffset(dayOffset);
+
+      matchList.innerHTML = "";
+
+      const filtered = matches.filter(m =>
+        (selectedLeague === "all" || m.competition === selectedLeague) &&
+        m.date === currentDate
+      );
+
+      if (filtered.length === 0) {
+        matchList.innerHTML = `<p class="text-center">Aucun match trouvé pour cette sélection.</p>`;
+        return;
+      }
+
+      filtered.forEach(match => {
+        const scoreDisplay = match.home.score !== null ? `${match.home.score} - ${match.away.score}` : "vs";
+        const countdown = getCountdownText(match.date, match.time);
+
+        const col = document.createElement("div");
+        col.className = "col-md-6";
+        col.innerHTML = `
+          <div class="card p-3 shadow-sm">
+            <h5 class="text-muted">${match.competition}</h5>
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center">
+                <img src="${match.home.logo}" class="team-logo me-2" alt="${match.home.name}">
+                <span>${match.home.name}</span>
+              </div>
+              <div class="vs">${scoreDisplay}</div>
+              <div class="d-flex align-items-center">
+                <span>${match.away.name}</span>
+                <img src="${match.away.logo}" class="team-logo ms-2" alt="${match.away.name}">
+              </div>
             </div>
-            <div class="vs text-center">${scoreDisplay}</div>
-            <div class="d-flex align-items-center">
-              <span>${match.away.name}</span>
-              <img src="${match.away.logo}" class="team-logo ms-2" alt="${match.away.name}">
-            </div>
+            <p class="mb-0 mt-2">Heure : ${match.time}</p>
+            <p class="text-primary">${countdown}</p>
           </div>
-          <p class="mt-2 mb-0">Heure : ${match.time}</p>
-          <p class="mb-0">Statut : ${match.status}</p>
-        </div>
-      `;
-      matchList.appendChild(col);
-    });
+        `;
+        matchList.appendChild(col);
+      });
+    }
+
+    leagueSelect.addEventListener("change", renderMatches);
+    daySelect.addEventListener("change", renderMatches);
+
+    renderMatches(); // premier affichage
   </script>
 </body>
 </html>
