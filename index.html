@@ -2,81 +2,145 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Planning Sports - Ajouter un match</title>
+  <title>Planning des matchs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
   <style>
-    body { font-family: Arial; padding: 20px; background: #f4f4f4; }
-    form, .match-list { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-    input, select { padding: 8px; margin: 5px 0; width: 100%; }
-    button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-    .match { border-bottom: 1px solid #ddd; padding: 10px 0; }
+    .team-input { display: flex; gap: 10px; margin-bottom: 10px; }
+    .calendar-container { display: none; margin-top: 20px; }
   </style>
 </head>
-<body>
+<body class="bg-light p-4">
 
-  <h1>Ajouter un Match</h1>
+  <div class="container">
+    <h1 class="mb-4">⚽ Planification des matchs (local)</h1>
 
-  <form id="matchForm">
-    <input type="text" id="competition" placeholder="Compétition (ex: Ligue 2)" required>
-    <input type="text" id="homeTeam" placeholder="Équipe Domicile" required>
-    <input type="text" id="awayTeam" placeholder="Équipe Extérieur" required>
-    <input type="text" id="homeLogo" placeholder="Logo équipe domicile (URL)">
-    <input type="text" id="awayLogo" placeholder="Logo équipe extérieur (URL)">
-    <input type="datetime-local" id="date" required>
-    <button type="submit">Ajouter le match</button>
-  </form>
+    <!-- Formulaire d'ajout -->
+    <div class="card p-3 mb-4 shadow">
+      <h5>Ajouter un match</h5>
+      <form id="matchForm">
+        <div class="row mb-2">
+          <div class="col-md-4">
+            <input type="text" class="form-control" placeholder="🏆 Compétition" id="competition" required>
+          </div>
+          <div class="col-md-4">
+            <input type="date" class="form-control" id="date" required>
+          </div>
+          <div class="col-md-4">
+            <input type="time" class="form-control" id="time" required>
+          </div>
+        </div>
+        <div class="team-input">
+          <input type="text" class="form-control" placeholder="🏠 Équipe domicile" id="home" required>
+          <input type="number" class="form-control" placeholder="Score" id="homeScore">
+        </div>
+        <div class="team-input">
+          <input type="text" class="form-control" placeholder="🆚 Équipe extérieure" id="away" required>
+          <input type="number" class="form-control" placeholder="Score" id="awayScore">
+        </div>
+        <button type="submit" class="btn btn-primary">Ajouter</button>
+      </form>
+    </div>
 
-  <h2>📅 Matchs programmés</h2>
-  <div class="match-list" id="matchList"></div>
+    <!-- Filtres -->
+    <div class="d-flex justify-content-between mb-3">
+      <select class="form-select w-auto" id="filterCompetition">
+        <option value="">Toutes les compétitions</option>
+      </select>
+      <button class="btn btn-outline-secondary" id="toggleCalendar">🗓️ Vue calendrier</button>
+    </div>
 
+    <!-- Liste des matchs -->
+    <div id="matchList" class="row g-3"></div>
+
+    <!-- Calendrier -->
+    <div id="calendar" class="calendar-container"></div>
+  </div>
+
+  <!-- JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
   <script>
     const form = document.getElementById('matchForm');
-    const list = document.getElementById('matchList');
+    const matchList = document.getElementById('matchList');
+    const calendarEl = document.getElementById('calendar');
+    const calendarBtn = document.getElementById('toggleCalendar');
+    const filterCompetition = document.getElementById('filterCompetition');
 
-    function loadMatches() {
-      const matches = JSON.parse(localStorage.getItem('matches') || '[]');
-      list.innerHTML = '';
-      matches.forEach((m, index) => {
-        const date = new Date(m.date).toLocaleString();
-        list.innerHTML += `
-          <div class="match">
-            <strong>${m.competition}</strong><br>
-            <img src="${m.homeLogo}" width="30"> ${m.homeTeam} vs ${m.awayTeam} <img src="${m.awayLogo}" width="30"><br>
-            📅 ${date}
-            <br><button onclick="deleteMatch(${index})">🗑️ Supprimer</button>
-          </div>
-        `;
-      });
-    }
+    let matches = [];
 
-    function deleteMatch(index) {
-      const matches = JSON.parse(localStorage.getItem('matches') || '[]');
-      matches.splice(index, 1);
-      localStorage.setItem('matches', JSON.stringify(matches));
-      loadMatches();
-    }
-
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      const match = {
-        competition: form.competition.value,
-        homeTeam: form.homeTeam.value,
-        awayTeam: form.awayTeam.value,
-        homeLogo: form.homeLogo.value,
-        awayLogo: form.awayLogo.value,
-        date: form.date.value
-      };
-      const matches = JSON.parse(localStorage.getItem('matches') || '[]');
-      matches.push(match);
-      localStorage.setItem('matches', JSON.stringify(matches));
-      form.reset();
-      loadMatches();
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      locale: 'fr',
+      events: []
     });
 
-    loadMatches();
-  </script>
+    calendar.render();
 
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const match = {
+        id: Date.now(),
+        competition: competition.value.trim(),
+        date: date.value,
+        time: time.value,
+        home: home.value.trim(),
+        away: away.value.trim(),
+        homeScore: homeScore.value || null,
+        awayScore: awayScore.value || null,
+      };
+
+      matches.push(match);
+      form.reset();
+      renderMatches();
+      updateCalendar();
+      updateFilterOptions();
+    });
+
+    filterCompetition.addEventListener('change', renderMatches);
+
+    calendarBtn.addEventListener('click', () => {
+      calendarEl.style.display = calendarEl.style.display === 'none' ? 'block' : 'none';
+    });
+
+    function renderMatches() {
+      const selectedComp = filterCompetition.value;
+      const filtered = matches
+        .filter(m => !selectedComp || m.competition === selectedComp)
+        .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+
+      matchList.innerHTML = filtered.map(m => `
+        <div class="col-md-6">
+          <div class="card p-3 shadow-sm">
+            <h6 class="text-muted">${m.competition} — ${m.date} à ${m.time}</h6>
+            <p><strong>${m.home}</strong> ${m.homeScore ?? "-"} - ${m.awayScore ?? "-"} <strong>${m.away}</strong></p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateCalendar() {
+      calendar.removeAllEvents();
+      matches.forEach(m => {
+        calendar.addEvent({
+          title: `${m.home} vs ${m.away} (${m.competition})`,
+          start: `${m.date}T${m.time}`,
+        });
+      });
+      calendar.render();
+    }
+
+    function updateFilterOptions() {
+      const comps = Array.from(new Set(matches.map(m => m.competition))).sort();
+      filterCompetition.innerHTML = `<option value="">Toutes les compétitions</option>` +
+        comps.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+  </script>
 </body>
 </html>
+
 
 
 
