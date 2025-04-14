@@ -2,154 +2,201 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>⚽ Planning des matchs</title>
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
+  <title>Matchs en Local – Scores + Stats</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f4f6f9;
-      padding: 20px;
-    }
-    h1 {
-      text-align: center;
-    }
-    .controls {
-      margin: 20px 0;
-      text-align: center;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      background: white;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    th, td {
-      padding: 10px;
-      text-align: center;
-      border-bottom: 1px solid #eee;
-    }
-    th {
-      background: #007bff;
-      color: white;
-    }
-    .live { color: red; font-weight: bold; }
-    .finished { color: green; }
-    .scheduled { color: gray; }
-    img.team-logo {
-      height: 24px;
-      margin-right: 8px;
-      vertical-align: middle;
+    .calendar-container { display: none; margin-top: 20px; }
+    .live-badge { color: red; font-weight: bold; animation: blink 1s infinite; }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
     }
   </style>
 </head>
-<body>
+<body class="bg-light p-4">
 
-<h1>📺 Matchs à venir</h1>
+  <div class="container">
+    <h1 class="mb-4">📅 Planification des matchs (local)</h1>
 
-<div class="controls">
-  <input type="date" id="matchDate" />
-  <button onclick="loadMatches()">🔍 Rechercher</button>
-</div>
+    <!-- Formulaire -->
+    <div class="card p-3 mb-4 shadow">
+      <h5>Ajouter un match</h5>
+      <form id="matchForm">
+        <div class="row mb-2">
+          <div class="col-md-4"><input type="text" class="form-control" placeholder="🏆 Compétition" id="competition" required></div>
+          <div class="col-md-4"><input type="date" class="form-control" id="date" required></div>
+          <div class="col-md-4"><input type="time" class="form-control" id="time" required></div>
+        </div>
+        <div class="row mb-2">
+          <div class="col"><input type="text" class="form-control" placeholder="Équipe domicile" id="home" required></div>
+          <div class="col-2"><input type="number" class="form-control" placeholder="Score" id="homeScore"></div>
+        </div>
+        <div class="row mb-2">
+          <div class="col"><input type="text" class="form-control" placeholder="Équipe extérieure" id="away" required></div>
+          <div class="col-2"><input type="number" class="form-control" placeholder="Score" id="awayScore"></div>
+        </div>
+        <button class="btn btn-primary mt-2">Ajouter</button>
+      </form>
+    </div>
 
-<table>
-  <thead>
-    <tr>
-      <th>Compétition</th>
-      <th>Équipes</th>
-      <th>Date</th>
-      <th>Heure</th>
-      <th>Score</th>
-      <th>Statut</th>
-    </tr>
-  </thead>
-  <tbody id="matchBody"></tbody>
-</table>
+    <!-- Filtres -->
+    <div class="d-flex justify-content-between mb-3">
+      <select class="form-select w-auto" id="filterCompetition">
+        <option value="">Toutes les compétitions</option>
+      </select>
+      <div>
+        <button class="btn btn-outline-secondary me-2" id="toggleCalendar">🗓️ Vue calendrier</button>
+        <button class="btn btn-outline-success" id="showStats">📊 Stats équipes</button>
+      </div>
+    </div>
 
-<h2 style="margin-top: 50px;">📅 Vue Calendrier</h2>
-<div id="calendar" style="max-width: 900px; margin: auto;"></div>
+    <!-- Liste -->
+    <div id="matchList" class="row g-3"></div>
 
-<script>
-  const API_KEY = "a5d38022c5d2410282a038ddcbc41eb4";
+    <!-- Calendrier -->
+    <div id="calendar" class="calendar-container"></div>
 
-  async function loadMatches() {
-    const dateInput = document.getElementById("matchDate").value || new Date().toISOString().split("T")[0];
-    const res = await fetch(`https://api.football-data.org/v4/matches?dateFrom=${dateInput}&dateTo=${dateInput}`, {
-      headers: { "X-Auth-Token": API_KEY }
-    });
+    <!-- Statistiques -->
+    <div id="stats" class="mt-4"></div>
+  </div>
 
-    const data = await res.json();
-    const matches = data.matches;
-    const tbody = document.getElementById("matchBody");
-    tbody.innerHTML = "";
-
-    matches.forEach(match => {
-      const home = match.homeTeam;
-      const away = match.awayTeam;
-
-      let statusText = '';
-      let score = '-';
-      if (match.status === "LIVE") {
-        statusText = '<span class="live">🔴 En cours</span>';
-        score = `${match.score.fullTime.home ?? ''} - ${match.score.fullTime.away ?? ''}`;
-      } else if (match.status === "FINISHED") {
-        statusText = '<span class="finished">✅ Terminé</span>';
-        score = `${match.score.fullTime.home} - ${match.score.fullTime.away}`;
-      } else {
-        statusText = '<span class="scheduled">🕒 À venir</span>';
-      }
-
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${match.competition.name}</td>
-        <td>
-          <img src="${home.crest}" alt="logo" class="team-logo">${home.name}
-          <strong> vs </strong>
-          <img src="${away.crest}" alt="logo" class="team-logo">${away.name}
-        </td>
-        <td>${new Date(match.utcDate).toLocaleDateString()}</td>
-        <td>${new Date(match.utcDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
-        <td>${score}</td>
-        <td>${statusText}</td>
-      `;
-      tbody.appendChild(row);
-    });
-  }
-
-  // Initial load (aujourd’hui)
-  document.addEventListener("DOMContentLoaded", async function () {
-    document.getElementById("matchDate").value = new Date().toISOString().split("T")[0];
-    await loadMatches();
-    await loadCalendar();
-  });
-
-  // FullCalendar setup
-  async function loadCalendar() {
-    const today = new Date().toISOString().split("T")[0];
-    const res = await fetch(`https://api.football-data.org/v4/matches?dateFrom=${today}&dateTo=${today}`, {
-      headers: { "X-Auth-Token": API_KEY }
-    });
-    const data = await res.json();
-
-    const events = data.matches.map(match => ({
-      title: `${match.homeTeam.shortName} vs ${match.awayTeam.shortName}`,
-      start: match.utcDate
-    }));
-
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
+  <script>
+    const form = document.getElementById('matchForm');
+    const matchList = document.getElementById('matchList');
+    const filterCompetition = document.getElementById('filterCompetition');
     const calendarEl = document.getElementById('calendar');
+    const calendarBtn = document.getElementById('toggleCalendar');
+    const statsBtn = document.getElementById('showStats');
+    const statsEl = document.getElementById('stats');
+
+    let matches = [];
+
     const calendar = new FullCalendar.Calendar(calendarEl, {
       initialView: 'dayGridMonth',
       locale: 'fr',
-      events
+      events: []
     });
     calendar.render();
-  }
-</script>
 
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const match = {
+        id: Date.now(),
+        competition: competition.value.trim(),
+        date: date.value,
+        time: time.value,
+        home: home.value.trim(),
+        away: away.value.trim(),
+        homeScore: homeScore.value || null,
+        awayScore: awayScore.value || null,
+      };
+
+      matches.push(match);
+      form.reset();
+      renderMatches();
+      updateCalendar();
+      updateFilterOptions();
+    });
+
+    filterCompetition.addEventListener('change', renderMatches);
+    calendarBtn.addEventListener('click', () => calendarEl.style.display = calendarEl.style.display === 'none' ? 'block' : 'none');
+    statsBtn.addEventListener('click', showStats);
+
+    function isLive(match) {
+      const now = new Date();
+      const start = new Date(`${match.date}T${match.time}`);
+      const end = new Date(start.getTime() + 90 * 60000);
+      return now >= start && now <= end;
+    }
+
+    function renderMatches() {
+      const comp = filterCompetition.value;
+      const filtered = matches
+        .filter(m => !comp || m.competition === comp)
+        .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+
+      matchList.innerHTML = filtered.map(m => `
+        <div class="col-md-6">
+          <div class="card p-3 shadow-sm">
+            <div class="d-flex justify-content-between">
+              <h6 class="text-muted">${m.competition} — ${m.date} à ${m.time}</h6>
+              ${isLive(m) ? '<span class="live-badge">🔴 EN COURS</span>' : ''}
+            </div>
+            <p><strong>${m.home}</strong> ${m.homeScore ?? "-"} - ${m.awayScore ?? "-"} <strong>${m.away}</strong></p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateCalendar() {
+      calendar.removeAllEvents();
+      matches.forEach(m => {
+        calendar.addEvent({
+          title: `${m.home} vs ${m.away}`,
+          start: `${m.date}T${m.time}`
+        });
+      });
+      calendar.render();
+    }
+
+    function updateFilterOptions() {
+      const comps = [...new Set(matches.map(m => m.competition))];
+      filterCompetition.innerHTML = `<option value="">Toutes les compétitions</option>` +
+        comps.map(c => `<option value="${c}">${c}</option>`).join('');
+    }
+
+    function showStats() {
+      const teams = {};
+      matches.forEach(m => {
+        const [h, a] = [m.home, m.away];
+        if (!teams[h]) teams[h] = { name: h, played: 0, win: 0, draw: 0, lose: 0, gf: 0, ga: 0 };
+        if (!teams[a]) teams[a] = { name: a, played: 0, win: 0, draw: 0, lose: 0, gf: 0, ga: 0 };
+
+        if (m.homeScore != null && m.awayScore != null) {
+          const hs = parseInt(m.homeScore);
+          const as = parseInt(m.awayScore);
+          teams[h].played++; teams[a].played++;
+          teams[h].gf += hs; teams[h].ga += as;
+          teams[a].gf += as; teams[a].ga += hs;
+
+          if (hs > as) { teams[h].win++; teams[a].lose++; }
+          else if (hs < as) { teams[a].win++; teams[h].lose++; }
+          else { teams[h].draw++; teams[a].draw++; }
+        }
+      });
+
+      const table = Object.values(teams).sort((a, b) => b.win - a.win).map(t => `
+        <tr>
+          <td>${t.name}</td>
+          <td>${t.played}</td>
+          <td>${t.win}</td>
+          <td>${t.draw}</td>
+          <td>${t.lose}</td>
+          <td>${t.gf}</td>
+          <td>${t.ga}</td>
+        </tr>
+      `).join('');
+
+      statsEl.innerHTML = `
+        <h4>📊 Classement des équipes</h4>
+        <div class="table-responsive">
+          <table class="table table-striped table-bordered mt-2">
+            <thead>
+              <tr><th>Équipe</th><th>J</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th></tr>
+            </thead>
+            <tbody>${table}</tbody>
+          </table>
+        </div>
+      `;
+    }
+  </script>
 </body>
 </html>
+
 
 
