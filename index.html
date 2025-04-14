@@ -1,157 +1,155 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🗓️ Planning Sportif</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/main.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/main.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <meta charset="UTF-8">
+  <title>⚽ Planning des matchs</title>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
   <style>
-    body { background-color: #f9f9f9; }
-    .match-card { border-radius: 1rem; padding: 1rem; margin-bottom: 1rem; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .team-logo { width: 32px; height: 32px; object-fit: contain; }
-    .live-indicator { color: red; font-weight: bold; }
-    .fc { margin-top: 2rem; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f6f9;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .controls {
+      margin: 20px 0;
+      text-align: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 10px;
+      text-align: center;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #007bff;
+      color: white;
+    }
+    .live { color: red; font-weight: bold; }
+    .finished { color: green; }
+    .scheduled { color: gray; }
+    img.team-logo {
+      height: 24px;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
-<div class="container py-4">
-  <h1 class="text-center mb-4">📅 Planning Sportif & Matchs en Temps Réel</h1>
 
-  <!-- Filtres -->
-  <div class="row mb-3">
-    <div class="col-md-3">
-      <input type="date" id="filterDate" class="form-control" />
-    </div>
-    <div class="col-md-3">
-      <select id="filterSport" class="form-select">
-        <option value="">Tous les sports</option>
-        <option value="Football">⚽ Football</option>
-        <option value="F1">🏎️ F1</option>
-        <option value="MotoGP">🏍️ MotoGP</option>
-      </select>
-    </div>
-    <div class="col-md-3">
-      <input type="text" id="filterCompetition" placeholder="Compétition..." class="form-control" />
-    </div>
-    <div class="col-md-3 d-flex justify-content-end">
-      <button id="exportBtn" class="btn btn-outline-secondary">📤 Export PDF</button>
-    </div>
-  </div>
+<h1>📺 Matchs à venir</h1>
 
-  <!-- Liste des matchs -->
-  <div id="matches"></div>
-
-  <!-- Calendrier -->
-  <div id="calendar"></div>
-
-  <!-- Chart -->
-  <canvas id="statsChart" class="my-4"></canvas>
+<div class="controls">
+  <input type="date" id="matchDate" />
+  <button onclick="loadMatches()">🔍 Rechercher</button>
 </div>
 
+<table>
+  <thead>
+    <tr>
+      <th>Compétition</th>
+      <th>Équipes</th>
+      <th>Date</th>
+      <th>Heure</th>
+      <th>Score</th>
+      <th>Statut</th>
+    </tr>
+  </thead>
+  <tbody id="matchBody"></tbody>
+</table>
+
+<h2 style="margin-top: 50px;">📅 Vue Calendrier</h2>
+<div id="calendar" style="max-width: 900px; margin: auto;"></div>
+
 <script>
-const matchesContainer = document.getElementById("matches");
-const API_KEY = "demo"; // Remplace avec une clé API-Football gratuite
-const endpoint = "https://v3.football.api-sports.io/fixtures";
+  const API_KEY = "a5d38022c5d2410282a038ddcbc41eb4";
 
-// Récupère les matchs (football uniquement ici)
-async function fetchMatches() {
-  const res = await fetch(endpoint + "?next=20", {
-    headers: { "x-apisports-key": API_KEY },
+  async function loadMatches() {
+    const dateInput = document.getElementById("matchDate").value || new Date().toISOString().split("T")[0];
+    const res = await fetch(`https://api.football-data.org/v4/matches?dateFrom=${dateInput}&dateTo=${dateInput}`, {
+      headers: { "X-Auth-Token": API_KEY }
+    });
+
+    const data = await res.json();
+    const matches = data.matches;
+    const tbody = document.getElementById("matchBody");
+    tbody.innerHTML = "";
+
+    matches.forEach(match => {
+      const home = match.homeTeam;
+      const away = match.awayTeam;
+
+      let statusText = '';
+      let score = '-';
+      if (match.status === "LIVE") {
+        statusText = '<span class="live">🔴 En cours</span>';
+        score = `${match.score.fullTime.home ?? ''} - ${match.score.fullTime.away ?? ''}`;
+      } else if (match.status === "FINISHED") {
+        statusText = '<span class="finished">✅ Terminé</span>';
+        score = `${match.score.fullTime.home} - ${match.score.fullTime.away}`;
+      } else {
+        statusText = '<span class="scheduled">🕒 À venir</span>';
+      }
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${match.competition.name}</td>
+        <td>
+          <img src="${home.crest}" alt="logo" class="team-logo">${home.name}
+          <strong> vs </strong>
+          <img src="${away.crest}" alt="logo" class="team-logo">${away.name}
+        </td>
+        <td>${new Date(match.utcDate).toLocaleDateString()}</td>
+        <td>${new Date(match.utcDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+        <td>${score}</td>
+        <td>${statusText}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  // Initial load (aujourd’hui)
+  document.addEventListener("DOMContentLoaded", async function () {
+    document.getElementById("matchDate").value = new Date().toISOString().split("T")[0];
+    await loadMatches();
+    await loadCalendar();
   });
-  const data = await res.json();
-  return data.response || [];
-}
 
-function isLive(match) {
-  return match.fixture.status.short === "1H" || match.fixture.status.short === "2H";
-}
+  // FullCalendar setup
+  async function loadCalendar() {
+    const today = new Date().toISOString().split("T")[0];
+    const res = await fetch(`https://api.football-data.org/v4/matches?dateFrom=${today}&dateTo=${today}`, {
+      headers: { "X-Auth-Token": API_KEY }
+    });
+    const data = await res.json();
 
-function renderMatches(matches) {
-  matchesContainer.innerHTML = "";
-  matches.forEach((m) => {
-    const div = document.createElement("div");
-    div.className = "match-card";
-    div.innerHTML = `
-      <div class="d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center">
-          <img src="${m.teams.home.logo}" class="team-logo me-2" />
-          <strong>${m.teams.home.name}</strong>
-        </div>
-        <div class="text-center">
-          <div>${m.fixture.date.split("T")[0]} ${m.fixture.date.split("T")[1].slice(0, 5)}</div>
-          <div class="${isLive(m) ? 'live-indicator' : ''}">
-            ${isLive(m) ? '🔴 En cours' : '⏰ À venir'}
-          </div>
-          <div><a href="https://livetv.sx/frx/" target="_blank">${m.league.name}</a></div>
-        </div>
-        <div class="d-flex align-items-center">
-          <strong>${m.teams.away.name}</strong>
-          <img src="${m.teams.away.logo}" class="team-logo ms-2" />
-        </div>
-      </div>
-    `;
-    matchesContainer.appendChild(div);
-  });
-}
+    const events = data.matches.map(match => ({
+      title: `${match.homeTeam.shortName} vs ${match.awayTeam.shortName}`,
+      start: match.utcDate
+    }));
 
-function initCalendar(matches) {
-  const calendarEl = document.getElementById("calendar");
-  const events = matches.map((m) => ({
-    title: `${m.teams.home.name} vs ${m.teams.away.name}`,
-    date: m.fixture.date.split("T")[0],
-    backgroundColor: isLive(m) ? "red" : "blue",
-  }));
-  const calendar = new FullCalendar.Calendar(calendarEl, {
-    initialView: 'dayGridMonth',
-    events,
-  });
-  calendar.render();
-}
-
-function generateStatsChart(matches) {
-  const ctx = document.getElementById("statsChart").getContext("2d");
-  const comps = {};
-  matches.forEach(m => {
-    comps[m.league.name] = (comps[m.league.name] || 0) + 1;
-  });
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: Object.keys(comps),
-      datasets: [{
-        label: 'Matchs par compétition',
-        data: Object.values(comps),
-        backgroundColor: 'rgba(54, 162, 235, 0.6)'
-      }]
-    }
-  });
-}
-
-function exportPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  doc.text("Planning des matchs", 10, 10);
-  let y = 20;
-  document.querySelectorAll('.match-card').forEach(card => {
-    doc.text(card.innerText.slice(0, 90), 10, y);
-    y += 10;
-  });
-  doc.save("planning_matchs.pdf");
-}
-
-document.getElementById("exportBtn").addEventListener("click", exportPDF);
-
-fetchMatches().then(matches => {
-  renderMatches(matches);
-  initCalendar(matches);
-  generateStatsChart(matches);
-});
+    const calendarEl = document.getElementById('calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      locale: 'fr',
+      events
+    });
+    calendar.render();
+  }
 </script>
+
 </body>
 </html>
+
 
