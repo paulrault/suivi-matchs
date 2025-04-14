@@ -2,73 +2,60 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Planning Sportif</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Planning Sports Complet</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css' rel='stylesheet' />
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/main.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/main.min.js"></script>
   <style>
-    body { background-color: #f8f9fa; }
-    .fc-event-title-container { font-size: 0.9em; }
-    .form-control, .form-select { margin-bottom: 10px; }
+    .team-logo { width: 30px; height: 30px; object-fit: contain; }
+    .vs { font-weight: bold; font-size: 1.2rem; margin: 0 10px; }
+    #calendar { max-width: 900px; margin: 2rem auto; }
   </style>
 </head>
-<body>
+<body class="bg-light">
 <div class="container py-4">
-  <h1 class="text-center mb-4">🏅 Planning Sportif</h1>
+  <h1 class="text-center mb-4">🏅 Planning Multi-Sport</h1>
 
   <div class="row mb-3">
-    <div class="col-md-3">
-      <select id="filterSport" class="form-select">
-        <option value="all">Tous les sports</option>
-        <option value="Football">Football</option>
-        <option value="F1">F1</option>
-        <option value="Basket">Basket</option>
-        <option value="Tennis">Tennis</option>
+    <div class="col-md-4">
+      <label class="form-label">🏆 Compétition</label>
+      <select id="competitionSelect" class="form-select">
+        <option value="all">Toutes</option>
+        <option value="Ligue 1">Ligue 1</option>
+        <option value="MotoGP">MotoGP</option>
+        <option value="F1">Formule 1</option>
+        <!-- autres compétitions... -->
       </select>
     </div>
-    <div class="col-md-3">
-      <input type="date" id="filterDate" class="form-control">
+    <div class="col-md-4">
+      <label class="form-label">📅 Date</label>
+      <input type="date" id="dateSelect" class="form-control">
     </div>
-    <div class="col-md-3">
-      <input type="text" id="filterCompetition" placeholder="Compétition..." class="form-control">
-    </div>
-    <div class="col-md-3 text-end">
-      <button id="loginBtn" class="btn btn-outline-primary">Connexion 🔐</button>
-      <button id="logoutBtn" class="btn btn-outline-danger d-none">Déconnexion</button>
+    <div class="col-md-4">
+      <label class="form-label">🌍 Zone</label>
+      <select id="regionSelect" class="form-select">
+        <option value="all">Toutes</option>
+        <option value="Europe">Europe</option>
+        <option value="Amérique">Amérique</option>
+      </select>
     </div>
   </div>
 
-  <div id='calendar'></div>
-
-  <hr>
-  <div class="mt-4">
-    <canvas id="statsChart" height="100"></canvas>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5>📆 Vue Calendrier</h5>
+    <button class="btn btn-outline-primary" onclick="loadCalendar()">Afficher</button>
   </div>
 
-  <div id="adminPanel" class="mt-5 d-none">
-    <h4>➕ Ajouter / Modifier un match</h4>
-    <form id="matchForm">
-      <input type="hidden" id="matchId">
-      <input type="text" id="sport" placeholder="Sport (ex: Football)" class="form-control" required>
-      <input type="text" id="competition" placeholder="Compétition" class="form-control" required>
-      <input type="text" id="team1" placeholder="Équipe 1" class="form-control" required>
-      <input type="text" id="team2" placeholder="Équipe 2" class="form-control" required>
-      <input type="datetime-local" id="date" class="form-control" required>
-      <input type="text" id="channel" placeholder="Chaîne TV (ex: beIN)" class="form-control">
-      <input type="url" id="streamUrl" placeholder="URL streaming (si chaîne payante)" class="form-control">
-      <button type="submit" class="btn btn-success">Enregistrer</button>
-    </form>
-  </div>
+  <div id="match-list" class="row g-4"></div>
+
+  <div id="calendar"></div>
 </div>
 
-<script>
-  // === CONFIG FIREBASE ===
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
   const firebaseConfig = {
     apiKey: "AIzaSyBToR5BXaPHsg8GgMosJBMompqUU1LBGG8",
     authDomain: "planning-sports.firebaseapp.com",
@@ -77,114 +64,82 @@
     messagingSenderId: "808656601330",
     appId: "1:808656601330:web:02c6c6c54e4cc705d6d06b"
   };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const auth = firebase.auth();
 
-  // === UI & Events ===
-  const calendarEl = document.getElementById('calendar');
-  let calendar;
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-  function loadCalendar(matches) {
-    const events = matches.map(match => ({
-      id: match.id,
-      title: `${match.team1} vs ${match.team2} (${match.competition})`,
-      start: match.date,
-      extendedProps: match
-    }));
+  async function fetchMatches() {
+    const comp = document.getElementById("competitionSelect").value;
+    const region = document.getElementById("regionSelect").value;
+    const date = document.getElementById("dateSelect").value;
+    
+    const ref = collection(db, "matches");
+    const snapshot = await getDocs(ref);
+    const matches = [];
 
-    if (calendar) calendar.destroy();
-    calendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: 'dayGridMonth',
-      events,
-      eventClick(info) {
-        const m = info.event.extendedProps;
-        let message = `${m.team1} vs ${m.team2}\n${m.competition}\n${new Date(m.date).toLocaleString()}\nChaîne: ${m.channel}`;
-        if (m.streamUrl) message += `\n👉 Streaming: ${m.streamUrl}`;
-        alert(message);
-        if (m.streamUrl) window.open(m.streamUrl, '_blank');
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if ((comp === 'all' || data.competition === comp) &&
+          (region === 'all' || data.region === region) &&
+          (!date || data.date === date)) {
+        matches.push(data);
       }
+    });
+
+    renderMatches(matches);
+    return matches;
+  }
+
+  function renderMatches(matches) {
+    const matchList = document.getElementById("match-list");
+    matchList.innerHTML = matches.map(match => `
+      <div class="col-md-6">
+        <div class="card p-3 shadow-sm">
+          <h6 class="text-muted">${match.competition} — ${match.date}</h6>
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+              <img src="${match.home.logo}" class="team-logo me-2" alt="${match.home.name}">
+              <span>${match.home.name}</span>
+            </div>
+            <div class="vs">${match.score || "vs"}</div>
+            <div class="d-flex align-items-center">
+              <span>${match.away.name}</span>
+              <img src="${match.away.logo}" class="team-logo ms-2" alt="${match.away.name}">
+            </div>
+          </div>
+          <p class="mb-0 mt-2">Heure : ${match.time}</p>
+          ${match.channel ? `<a href="${match.paid ? match.streaming : '#'}" target="_blank" class="btn btn-sm mt-2 ${match.paid ? 'btn-danger' : 'btn-success'}">📺 ${match.channel}</a>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function loadCalendar() {
+    const matches = await fetchMatches();
+    const calendarEl = document.getElementById("calendar");
+    calendarEl.innerHTML = "";
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      locale: 'fr',
+      events: matches.map(m => ({
+        title: `${m.home.name} vs ${m.away.name}`,
+        start: `${m.date}T${m.time}:00`,
+        url: m.streaming || null
+      }))
     });
     calendar.render();
   }
 
-  function fetchMatches() {
-    db.collection('matches').get().then(snapshot => {
-      const matches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      applyFilters(matches);
-      updateChart(matches);
-    });
-  }
-
-  function applyFilters(matches) {
-    const sport = filterSport.value;
-    const date = filterDate.value;
-    const comp = filterCompetition.value.toLowerCase();
-
-    const filtered = matches.filter(m => {
-      return (sport === 'all' || m.sport === sport) &&
-             (!date || m.date.startsWith(date)) &&
-             (!comp || m.competition.toLowerCase().includes(comp));
-    });
-    loadCalendar(filtered);
-  }
-
-  document.getElementById('filterSport').onchange = fetchMatches;
-  document.getElementById('filterDate').oninput = fetchMatches;
-  document.getElementById('filterCompetition').oninput = fetchMatches;
-
-  // === FORMULAIRE ADMIN ===
-  document.getElementById('matchForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const data = {
-      sport: sport.value,
-      competition: competition.value,
-      team1: team1.value,
-      team2: team2.value,
-      date: date.value,
-      channel: channel.value,
-      streamUrl: streamUrl.value
-    };
-    const ref = matchId.value ? db.collection('matches').doc(matchId.value) : db.collection('matches').doc();
-    ref.set(data).then(() => {
-      fetchMatches();
-      matchForm.reset();
-      matchId.value = '';
-    });
-  });
-
-  // === AUTH ===
-  loginBtn.onclick = () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-  logoutBtn.onclick = () => auth.signOut();
-  auth.onAuthStateChanged(user => {
-    const adminPanel = document.getElementById('adminPanel');
-    loginBtn.classList.toggle('d-none', !!user);
-    logoutBtn.classList.toggle('d-none', !user);
-    adminPanel.classList.toggle('d-none', !user);
-  });
-
-  // === CHART ===
-  let chart;
-  function updateChart(matches) {
-    const countBySport = matches.reduce((acc, m) => {
-      acc[m.sport] = (acc[m.sport] || 0) + 1;
-      return acc;
-    }, {});
-    const ctx = document.getElementById('statsChart').getContext('2d');
-    if (chart) chart.destroy();
-    chart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: Object.keys(countBySport),
-        datasets: [{ label: 'Matchs par sport', data: Object.values(countBySport), backgroundColor: '#0d6efd' }]
-      }
-    });
-  }
+  document.getElementById("competitionSelect").addEventListener("change", fetchMatches);
+  document.getElementById("regionSelect").addEventListener("change", fetchMatches);
+  document.getElementById("dateSelect").addEventListener("change", fetchMatches);
 
   fetchMatches();
 </script>
 </body>
 </html>
+
 
 
 
