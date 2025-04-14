@@ -2,194 +2,129 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>📅 Planification Sportive</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore-compat.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Sportif</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
   <style>
-    .team-logo { width: 32px; height: 32px; object-fit: contain; }
-    .vs { font-weight: bold; font-size: 1.1rem; margin: 0 10px; }
-    .live-badge { color: red; font-weight: bold; margin-left: 10px; }
+    .chart-container, .calendar-container {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
   </style>
 </head>
 <body class="bg-light">
-  <div class="container py-4">
-    <div class="d-flex justify-content-between mb-4">
-      <h2>📺 Matchs à venir</h2>
-      <button id="loginBtn" class="btn btn-outline-primary btn-sm">Se connecter</button>
-    </div>
+<div class="container py-4">
+  <h1 class="text-center mb-4">📊 Tableau de bord des sports</h1>
 
-    <!-- Filtres -->
-    <div class="row mb-3">
-      <div class="col-md-3">
-        <input id="searchInput" class="form-control" placeholder="🔍 Rechercher">
-      </div>
-      <div class="col-md-3">
-        <select id="sportSelect" class="form-select">
-          <option value="">Tous les sports</option>
-          <option value="Football">⚽ Football</option>
-          <option value="F1">🏎️ F1</option>
-          <option value="MotoGP">🏍️ MotoGP</option>
-        </select>
-      </div>
-      <div class="col-md-2">
-        <button id="loadMoreBtn" class="btn btn-secondary w-100">+ Plus</button>
-      </div>
-    </div>
-
-    <!-- Liste matchs -->
-    <div id="matchList" class="row g-3"></div>
-
-    <!-- Formulaire admin -->
-    <div id="adminForm" class="mt-5" style="display:none">
-      <h4>🛠️ Ajouter / Modifier un match</h4>
-      <form id="matchForm">
-        <div class="row mb-2">
-          <div class="col-md-4">
-            <input type="text" class="form-control" placeholder="Sport" name="sport" required>
-          </div>
-          <div class="col-md-4">
-            <input type="text" class="form-control" placeholder="Compétition" name="competition" required>
-          </div>
-          <div class="col-md-4">
-            <input type="date" class="form-control" name="date" required>
-          </div>
-        </div>
-        <div class="row mb-2">
-          <div class="col-md-3"><input type="text" class="form-control" placeholder="Équipe domicile" name="home" required></div>
-          <div class="col-md-3"><input type="text" class="form-control" placeholder="Équipe extérieur" name="away" required></div>
-          <div class="col-md-2"><input type="time" class="form-control" name="time" required></div>
-          <div class="col-md-2"><input type="text" class="form-control" placeholder="Chaîne TV" name="channel"></div>
-          <div class="col-md-2"><input type="url" class="form-control" placeholder="URL streaming" name="link"></div>
-        </div>
-        <div class="row mb-2">
-          <div class="col-md-2"><input type="number" class="form-control" placeholder="Score dom" name="scoreHome"></div>
-          <div class="col-md-2"><input type="number" class="form-control" placeholder="Score ext" name="scoreAway"></div>
-        </div>
-        <input type="hidden" name="id">
-        <button type="submit" class="btn btn-success">💾 Enregistrer</button>
-      </form>
-    </div>
+  <!-- Chart -->
+  <div class="chart-container">
+    <h5>Répartition des sports</h5>
+    <canvas id="sportChart"></canvas>
   </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBToR5BXaPHsg8GgMosJBMompqUU1LBGG8",
-      authDomain: "planning-sports.firebaseapp.com",
-      projectId: "planning-sports",
-      storageBucket: "planning-sports.appspot.com",
-      messagingSenderId: "808656601330",
-      appId: "1:808656601330:web:02c6c6c54e4cc705d6d06b"
-    };
+  <!-- Export -->
+  <div class="mb-3 d-flex gap-3">
+    <button onclick="exportExcel()" class="btn btn-success">📥 Export Excel</button>
+    <button onclick="exportPDF()" class="btn btn-danger">🧾 Export PDF</button>
+  </div>
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
+  <!-- Calendar -->
+  <div class="calendar-container">
+    <h5>Calendrier des matchs</h5>
+    <div id="calendar"></div>
+  </div>
+</div>
 
-    const loginBtn = document.getElementById('loginBtn');
-    const matchList = document.getElementById('matchList');
-    const matchForm = document.getElementById('matchForm');
-    const adminForm = document.getElementById('adminForm');
-    const loadMoreBtn = document.getElementById('loadMoreBtn');
-    const searchInput = document.getElementById('searchInput');
-    const sportSelect = document.getElementById('sportSelect');
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+  import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
-    let lastVisible = null;
-    let currentUser = null;
+  const firebaseConfig = {
+    apiKey: "AIzaSyBToR5BXaPHsg8GgMosJBMompqUU1LBGG8",
+    authDomain: "planning-sports.firebaseapp.com",
+    projectId: "planning-sports",
+    storageBucket: "planning-sports.appspot.com",
+    messagingSenderId: "808656601330",
+    appId: "1:808656601330:web:02c6c6c54e4cc705d6d06b"
+  };
 
-    loginBtn.onclick = () => {
-      auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-    };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        loginBtn.innerText = `Déconnexion (${user.displayName})`;
-        loginBtn.onclick = () => auth.signOut();
-        adminForm.style.display = 'block';
-        currentUser = user;
-      } else {
-        loginBtn.innerText = 'Se connecter';
-        adminForm.style.display = 'none';
-        currentUser = null;
+  let chart;
+  async function loadChart() {
+    const snap = await getDocs(collection(db, "matches"));
+    const count = {};
+    snap.forEach(doc => {
+      const s = doc.data().sport || "Autre";
+      count[s] = (count[s] || 0) + 1;
+    });
+    const ctx = document.getElementById("sportChart").getContext("2d");
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: "pie",
+      data: {
+        labels: Object.keys(count),
+        datasets: [{
+          data: Object.values(count),
+          backgroundColor: ['#4e79a7','#f28e2c','#e15759','#76b7b2','#59a14f']
+        }]
       }
     });
+  }
 
-    async function loadMatches(reset = true) {
-      let ref = db.collection('matches')
-        .where('date', '>=', new Date().toISOString().split('T')[0])
-        .orderBy('date')
-        .limit(5);
+  async function renderCalendar() {
+    const snap = await getDocs(collection(db, 'matches'));
+    const events = snap.docs.map(doc => {
+      const m = doc.data();
+      return {
+        title: `${m.home} vs ${m.away}`,
+        start: `${m.date}T${m.time}`,
+        color: m.sport === "Football" ? "#4CAF50" : "#2196F3"
+      };
+    });
+    const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+      initialView: 'dayGridMonth',
+      events
+    });
+    calendar.render();
+  }
 
-      const search = searchInput.value.toLowerCase();
-      const selectedSport = sportSelect.value;
+  async function exportExcel() {
+    const snap = await getDocs(collection(db, 'matches'));
+    const rows = snap.docs.map(doc => doc.data());
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Matchs");
+    XLSX.writeFile(wb, "planning_matchs.xlsx");
+  }
 
-      if (lastVisible && !reset) {
-        ref = ref.startAfter(lastVisible);
-      }
+  async function exportPDF() {
+    const snap = await getDocs(collection(db, 'matches'));
+    const rows = snap.docs.map(doc => doc.data());
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text("Planning des matchs", 10, 10);
+    rows.forEach((m, i) => {
+      doc.text(`${m.date} ${m.home} vs ${m.away} (${m.sport})`, 10, 20 + i * 8);
+    });
+    doc.save("matchs.pdf");
+  }
 
-      const snap = await ref.get();
-      if (reset) matchList.innerHTML = '';
-
-      snap.forEach(doc => {
-        const match = doc.data();
-        const id = doc.id;
-
-        if (selectedSport && match.sport !== selectedSport) return;
-        if (search && ![match.home, match.away, match.competition].some(v => v.toLowerCase().includes(search))) return;
-
-        const now = new Date();
-        const matchDate = new Date(`${match.date}T${match.time}`);
-        const isLive = matchDate <= now && now <= new Date(matchDate.getTime() + 2 * 60 * 60 * 1000);
-
-        const div = document.createElement('div');
-        div.className = 'col-md-6';
-        div.innerHTML = `
-          <div class="card p-3">
-            <h6>${match.sport} — ${match.competition} ${isLive ? '<span class="live-badge">🔴 EN COURS</span>' : ''}</h6>
-            <p><strong>${match.home}</strong> ${match.scoreHome ?? ''} - ${match.scoreAway ?? ''} <strong>${match.away}</strong></p>
-            <p>🕒 ${match.date} à ${match.time}</p>
-            ${match.channel ? `<p>📺 ${match.channel} ${match.link ? `<a href="${match.link}" target="_blank">(voir)</a>` : ''}</p>` : ''}
-            ${currentUser ? `<button class="btn btn-sm btn-outline-secondary" onclick="editMatch('${id}')">✏️ Modifier</button>` : ''}
-          </div>
-        `;
-        matchList.appendChild(div);
-      });
-
-      lastVisible = snap.docs[snap.docs.length - 1];
-    }
-
-    loadMatches();
-
-    matchForm.onsubmit = async e => {
-      e.preventDefault();
-      const formData = new FormData(matchForm);
-      const data = Object.fromEntries(formData.entries());
-
-      if (data.id) {
-        await db.collection('matches').doc(data.id).update(data);
-      } else {
-        await db.collection('matches').add(data);
-      }
-
-      matchForm.reset();
-      loadMatches();
-    };
-
-    window.editMatch = async (id) => {
-      const doc = await db.collection('matches').doc(id).get();
-      const match = doc.data();
-      for (const key in match) {
-        if (matchForm[key]) matchForm[key].value = match[key];
-      }
-      matchForm.id.value = id;
-    };
-
-    loadMoreBtn.onclick = () => loadMatches(false);
-    searchInput.oninput = () => loadMatches();
-    sportSelect.onchange = () => loadMatches();
-  </script>
+  loadChart();
+  renderCalendar();
+</script>
 </body>
 </html>
+
 
