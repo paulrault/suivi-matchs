@@ -17,109 +17,74 @@
       font-size: 1.2rem;
       margin: 0 10px;
     }
+    #loginSection {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+    }
   </style>
 </head>
 <body class="bg-light">
   <div class="container py-4">
+    <div id="loginSection">
+      <button id="loginBtn" class="btn btn-outline-primary">Connexion</button>
+      <button id="logoutBtn" class="btn btn-outline-danger d-none">Déconnexion</button>
+    </div>
+
     <h1 class="text-center mb-4">⚽ Matchs à venir</h1>
+
+    <!-- Filtres -->
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <input type="text" id="searchInput" class="form-control" placeholder="🔍 Recherche par équipe ou compétition">
+      </div>
+      <div class="col-md-4">
+        <select id="sportSelect" class="form-select">
+          <option value="">Tous les sports</option>
+          <option value="Football">Football</option>
+          <option value="Rugby">Rugby</option>
+          <option value="Tennis">Tennis</option>
+          <option value="F1">F1</option>
+          <option value="MotoGP">MotoGP</option>
+        </select>
+      </div>
+    </div>
+
     <div id="match-list" class="row g-4"></div>
+
+    <!-- Formulaire d'ajout admin -->
+    <div id="adminForm" class="mt-5 d-none">
+      <h3>Ajouter un match</h3>
+      <form id="matchForm">
+        <div class="row g-2">
+          <div class="col-md-3"><input type="text" id="competition" placeholder="Compétition" class="form-control" required></div>
+          <div class="col-md-3"><input type="text" id="sport" placeholder="Sport" class="form-control" required></div>
+          <div class="col-md-3"><input type="date" id="date" class="form-control" required></div>
+          <div class="col-md-3"><input type="time" id="time" class="form-control" required></div>
+        </div>
+        <div class="row g-2 mt-2">
+          <div class="col-md-3"><input type="text" id="homeName" placeholder="Équipe domicile" class="form-control" required></div>
+          <div class="col-md-3"><input type="url" id="homeLogo" placeholder="Logo domicile" class="form-control"></div>
+          <div class="col-md-3"><input type="text" id="awayName" placeholder="Équipe extérieur" class="form-control" required></div>
+          <div class="col-md-3"><input type="url" id="awayLogo" placeholder="Logo extérieur" class="form-control"></div>
+        </div>
+        <div class="row g-2 mt-2">
+          <div class="col-md-6"><input type="text" id="broadcastName" placeholder="Chaîne TV" class="form-control"></div>
+          <div class="col-md-4"><input type="url" id="broadcastUrl" placeholder="URL streaming" class="form-control"></div>
+          <div class="col-md-2 form-check pt-2">
+            <input type="checkbox" id="broadcastPaid" class="form-check-input">
+            <label class="form-check-label">Payant</label>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-success mt-3">Ajouter</button>
+      </form>
+    </div>
   </div>
 </body>
 </html>
 
-<!-- main.js -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
-import { getFirestore, collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBToR5BXaPHsg8GgMosJBMompqUU1LBGG8",
-  authDomain: "planning-sports.firebaseapp.com",
-  projectId: "planning-sports",
-  storageBucket: "planning-sports.appspot.com",
-  messagingSenderId: "808656601330",
-  appId: "1:808656601330:web:02c6c6c54e4cc705d6d06b"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-let loadedMatches = [];
-
-async function getMatches() {
-  try {
-    const today = new Date().toISOString().split('T')[0];
-    const q = query(
-      collection(db, "matches"),
-      where("date", ">=", today),
-      orderBy("date"),
-      orderBy("time")
-    );
-    const querySnapshot = await getDocs(q);
-    loadedMatches = [];
-    querySnapshot.forEach((doc) => {
-      loadedMatches.push({ id: doc.id, ...doc.data() });
-    });
-    console.log("Matchs chargés:", loadedMatches);
-  } catch (error) {
-    console.error("Erreur de chargement:", error);
-  }
-}
-
-function renderMatches() {
-  const container = document.getElementById("match-list");
-  container.innerHTML = "";
-  const now = new Date();
-
-  if (loadedMatches.length === 0) {
-    container.innerHTML = `<p class="text-center text-muted">Aucun match trouvé.</p>`;
-    return;
-  }
-
-  loadedMatches.forEach(match => {
-    const matchDateTime = new Date(`${match.date}T${match.time}`);
-    const diff = matchDateTime - now;
-    const isLive = diff <= 0 && diff > -2 * 60 * 60 * 1000;
-    const isUpcoming = diff > 0;
-
-    const countdown = isUpcoming
-      ? `Débute dans ${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}min`
-      : isLive
-      ? `<span class="text-danger fw-bold">🔴 EN COURS</span>`
-      : `<span class="text-muted">Terminé</span>`;
-
-    const broadcastHtml = match.broadcast?.name
-      ? `<p>📺 ${match.broadcast.paid ? `<a href="${match.broadcast.url}" target="_blank">${match.broadcast.name}</a>` : match.broadcast.name}</p>`
-      : `<p>📺 Non communiqué</p>`;
-
-    container.innerHTML += `
-      <div class="col-md-6">
-        <div class="card p-3 shadow-sm mb-3">
-          <h6 class="text-muted">${match.competition} — ${match.sport || "Sport"} — ${match.date}</h6>
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center">
-              <img src="${match.home.logo}" class="team-logo me-2" alt="${match.home.name}">
-              <span>${match.home.name}</span>
-            </div>
-            <div class="vs">${match.home.score ?? ""} - ${match.away.score ?? ""}</div>
-            <div class="d-flex align-items-center">
-              <span>${match.away.name}</span>
-              <img src="${match.away.logo}" class="team-logo ms-2" alt="${match.away.name}">
-            </div>
-          </div>
-          <p class="mb-0 mt-2">🕒 Heure : ${match.time}</p>
-          ${broadcastHtml}
-          <p class="text-primary">${countdown}</p>
-        </div>
-      </div>
-    `;
-  });
-}
-
-(async () => {
-  await getMatches();
-  renderMatches();
-})();
-</script>
-
-
-
+<!-- Le fichier main.js doit maintenant inclure : -->
+<!-- - Firebase Auth pour login/logout -->
+<!-- - Firestore pour chargement/ajout des matchs -->
+<!-- - Filtres, recherche, pagination -->
+<!-- Je t’intègre le code JS complet dans le message suivant si tu veux. -->
