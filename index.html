@@ -2,129 +2,155 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard Sportif</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
-  <style>
-    .chart-container, .calendar-container {
-      background: #fff;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-bottom: 2rem;
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, addDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-messaging.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBToR5BXaPHsg8GgMosJBMompqUU1LBGG8",
+      authDomain: "planning-sports.firebaseapp.com",
+      projectId: "planning-sports",
+      storageBucket: "planning-sports.appspot.com",
+      messagingSenderId: "808656601330",
+      appId: "1:808656601330:web:02c6c6c54e4cc705d6d06b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const messaging = getMessaging(app);
+
+    // Notifications push
+    getToken(messaging, { vapidKey: 'YOUR_PUBLIC_VAPID_KEY' })
+      .then((currentToken) => {
+        if (currentToken) {
+          console.log('Token:', currentToken);
+        }
+      })
+      .catch(err => console.error('Erreur notification', err));
+
+    onMessage(messaging, payload => {
+      alert(`🔔 Notification : ${payload.notification.title}`);
+    });
+
+    // Récupérer et afficher les matchs
+    async function fetchMatches() {
+      const snapshot = await getDocs(collection(db, 'matchs'));
+      const list = document.getElementById('match-list');
+      list.innerHTML = '';
+      snapshot.forEach(doc => {
+        const m = doc.data();
+        const div = document.createElement('div');
+        div.className = 'card mb-3';
+        div.innerHTML = `
+          <div class="card-body">
+            <h5>${m.sport} - ${m.competition}</h5>
+            <p>${m.date} ${m.heure} : ${m.home} vs ${m.away}</p>
+            <p>Score : ${m.scoreHome ?? '-'} - ${m.scoreAway ?? '-'}</p>
+            <button class="btn btn-sm btn-outline-secondary" onclick="editMatch('${doc.id}')">✏️ Modifier</button>
+          </div>
+        `;
+        list.appendChild(div);
+      });
     }
+    fetchMatches();
+
+    // Ajouter un match
+    window.addEventListener('submit', async (e) => {
+      if (e.target.id === 'match-form') {
+        e.preventDefault();
+        const form = e.target;
+        await addDoc(collection(db, 'matchs'), {
+          sport: form.sport.value,
+          competition: form.competition.value,
+          home: form.home.value,
+          away: form.away.value,
+          date: form.date.value,
+          heure: form.heure.value,
+          scoreHome: null,
+          scoreAway: null
+        });
+        form.reset();
+        fetchMatches();
+      }
+    });
+
+    window.editMatch = async (id) => {
+      const scoreHome = prompt('Score domicile ?');
+      const scoreAway = prompt('Score extérieur ?');
+      await updateDoc(doc(db, 'matchs', id), {
+        scoreHome: parseInt(scoreHome),
+        scoreAway: parseInt(scoreAway)
+      });
+      fetchMatches();
+    }
+  </script>
+  <style>
+    body { background: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+    .card { border-radius: 1rem; }
+    .container { max-width: 800px; }
   </style>
 </head>
-<body class="bg-light">
-<div class="container py-4">
-  <h1 class="text-center mb-4">📊 Tableau de bord des sports</h1>
+<body>
+  <div class="container py-4">
+    <h2 class="mb-4 text-center">🏆 Dashboard Sportif</h2>
 
-  <!-- Chart -->
-  <div class="chart-container">
-    <h5>Répartition des sports</h5>
+    <!-- Formulaire Ajout -->
+    <form id="match-form" class="row g-3 mb-4">
+      <div class="col-md-4">
+        <input class="form-control" name="sport" placeholder="Sport" required>
+      </div>
+      <div class="col-md-4">
+        <input class="form-control" name="competition" placeholder="Compétition" required>
+      </div>
+      <div class="col-md-4">
+        <input class="form-control" name="date" type="date" required>
+      </div>
+      <div class="col-md-4">
+        <input class="form-control" name="heure" type="time" required>
+      </div>
+      <div class="col-md-4">
+        <input class="form-control" name="home" placeholder="Domicile" required>
+      </div>
+      <div class="col-md-4">
+        <input class="form-control" name="away" placeholder="Extérieur" required>
+      </div>
+      <div class="col-12 text-end">
+        <button class="btn btn-success">➕ Ajouter un match</button>
+      </div>
+    </form>
+
+    <!-- Liste des matchs -->
+    <div id="match-list"></div>
+
+    <!-- Statistiques -->
+    <h4 class="mt-5">📊 Répartition par sport</h4>
     <canvas id="sportChart"></canvas>
   </div>
 
-  <!-- Export -->
-  <div class="mb-3 d-flex gap-3">
-    <button onclick="exportExcel()" class="btn btn-success">📥 Export Excel</button>
-    <button onclick="exportPDF()" class="btn btn-danger">🧾 Export PDF</button>
-  </div>
-
-  <!-- Calendar -->
-  <div class="calendar-container">
-    <h5>Calendrier des matchs</h5>
-    <div id="calendar"></div>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-  import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyBToR5BXaPHsg8GgMosJBMompqUU1LBGG8",
-    authDomain: "planning-sports.firebaseapp.com",
-    projectId: "planning-sports",
-    storageBucket: "planning-sports.appspot.com",
-    messagingSenderId: "808656601330",
-    appId: "1:808656601330:web:02c6c6c54e4cc705d6d06b"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  let chart;
-  async function loadChart() {
-    const snap = await getDocs(collection(db, "matches"));
-    const count = {};
-    snap.forEach(doc => {
-      const s = doc.data().sport || "Autre";
-      count[s] = (count[s] || 0) + 1;
-    });
-    const ctx = document.getElementById("sportChart").getContext("2d");
-    if (chart) chart.destroy();
-    chart = new Chart(ctx, {
-      type: "pie",
+  <script>
+    const ctx = document.getElementById('sportChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'doughnut',
       data: {
-        labels: Object.keys(count),
+        labels: ['Football', 'Basketball', 'Formule 1', 'Tennis'],
         datasets: [{
-          data: Object.values(count),
-          backgroundColor: ['#4e79a7','#f28e2c','#e15759','#76b7b2','#59a14f']
+          label: 'Événements',
+          data: [12, 8, 5, 6],
+          backgroundColor: ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2']
         }]
+      },
+      options: {
+        responsive: true
       }
     });
-  }
-
-  async function renderCalendar() {
-    const snap = await getDocs(collection(db, 'matches'));
-    const events = snap.docs.map(doc => {
-      const m = doc.data();
-      return {
-        title: `${m.home} vs ${m.away}`,
-        start: `${m.date}T${m.time}`,
-        color: m.sport === "Football" ? "#4CAF50" : "#2196F3"
-      };
-    });
-    const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-      initialView: 'dayGridMonth',
-      events
-    });
-    calendar.render();
-  }
-
-  async function exportExcel() {
-    const snap = await getDocs(collection(db, 'matches'));
-    const rows = snap.docs.map(doc => doc.data());
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Matchs");
-    XLSX.writeFile(wb, "planning_matchs.xlsx");
-  }
-
-  async function exportPDF() {
-    const snap = await getDocs(collection(db, 'matches'));
-    const rows = snap.docs.map(doc => doc.data());
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.setFontSize(14);
-    doc.text("Planning des matchs", 10, 10);
-    rows.forEach((m, i) => {
-      doc.text(`${m.date} ${m.home} vs ${m.away} (${m.sport})`, 10, 20 + i * 8);
-    });
-    doc.save("matchs.pdf");
-  }
-
-  loadChart();
-  renderCalendar();
-</script>
+  </script>
 </body>
 </html>
+
 
 
