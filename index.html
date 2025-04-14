@@ -1,145 +1,182 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Planning des matchs</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Planning Sports</title>
   <style>
-    .team-input { display: flex; gap: 10px; margin-bottom: 10px; }
-    .calendar-container { display: none; margin-top: 20px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 1rem;
+    }
+    .match-card {
+      background: white;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .live { color: red; font-weight: bold; margin-left: 10px; }
+    input, select {
+      padding: 5px;
+      margin: 5px;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .scorers {
+      font-size: 0.9em;
+      list-style: none;
+      padding: 0;
+      margin: 5px 0;
+    }
+    @media(max-width: 600px){
+      .filters { flex-direction: column; }
+    }
   </style>
 </head>
-<body class="bg-light p-4">
+<body>
 
-  <div class="container">
-    <h1 class="mb-4">⚽ Planification des matchs (local)</h1>
+  <h1>📅 Planning Sports</h1>
 
-    <!-- Formulaire d'ajout -->
-    <div class="card p-3 mb-4 shadow">
-      <h5>Ajouter un match</h5>
-      <form id="matchForm">
-        <div class="row mb-2">
-          <div class="col-md-4">
-            <input type="text" class="form-control" placeholder="🏆 Compétition" id="competition" required>
-          </div>
-          <div class="col-md-4">
-            <input type="date" class="form-control" id="date" required>
-          </div>
-          <div class="col-md-4">
-            <input type="time" class="form-control" id="time" required>
-          </div>
-        </div>
-        <div class="team-input">
-          <input type="text" class="form-control" placeholder="🏠 Équipe domicile" id="home" required>
-          <input type="number" class="form-control" placeholder="Score" id="homeScore">
-        </div>
-        <div class="team-input">
-          <input type="text" class="form-control" placeholder="🆚 Équipe extérieure" id="away" required>
-          <input type="number" class="form-control" placeholder="Score" id="awayScore">
-        </div>
-        <button type="submit" class="btn btn-primary">Ajouter</button>
-      </form>
-    </div>
-
-    <!-- Filtres -->
-    <div class="d-flex justify-content-between mb-3">
-      <select class="form-select w-auto" id="filterCompetition">
-        <option value="">Toutes les compétitions</option>
-      </select>
-      <button class="btn btn-outline-secondary" id="toggleCalendar">🗓️ Vue calendrier</button>
-    </div>
-
-    <!-- Liste des matchs -->
-    <div id="matchList" class="row g-3"></div>
-
-    <!-- Calendrier -->
-    <div id="calendar" class="calendar-container"></div>
+  <div class="filters">
+    <select id="filter-sport" onchange="renderMatches()">
+      <option value="">Tous les sports</option>
+      <option value="Football">Football</option>
+      <option value="Formule 1">Formule 1</option>
+    </select>
+    <select id="filter-competition" onchange="renderMatches()">
+      <option value="">Toutes les compétitions</option>
+      <option value="Ligue 2">Ligue 2</option>
+      <option value="Grand Prix">Grand Prix</option>
+    </select>
+    <input type="date" id="filter-date" onchange="renderMatches()">
+    <select id="timezone" onchange="renderMatches()">
+      <option value="Europe/Paris">Europe/Paris</option>
+      <option value="UTC">UTC</option>
+    </select>
   </div>
 
-  <!-- JS -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
+  <div id="match-container"></div>
+
   <script>
-    const form = document.getElementById('matchForm');
-    const matchList = document.getElementById('matchList');
-    const calendarEl = document.getElementById('calendar');
-    const calendarBtn = document.getElementById('toggleCalendar');
-    const filterCompetition = document.getElementById('filterCompetition');
-
-    let matches = [];
-
-    const calendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: 'dayGridMonth',
-      locale: 'fr',
-      events: []
-    });
-
-    calendar.render();
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-
-      const match = {
-        id: Date.now(),
-        competition: competition.value.trim(),
-        date: date.value,
-        time: time.value,
-        home: home.value.trim(),
-        away: away.value.trim(),
-        homeScore: homeScore.value || null,
-        awayScore: awayScore.value || null,
-      };
-
-      matches.push(match);
-      form.reset();
-      renderMatches();
-      updateCalendar();
-      updateFilterOptions();
-    });
-
-    filterCompetition.addEventListener('change', renderMatches);
-
-    calendarBtn.addEventListener('click', () => {
-      calendarEl.style.display = calendarEl.style.display === 'none' ? 'block' : 'none';
-    });
+    const matches = [
+      {
+        id: 1,
+        sport: "Football",
+        competition: "Ligue 2",
+        journee: "30",
+        equipeHome: "Auxerre",
+        equipeAway: "Saint-Étienne",
+        date: "2025-04-13",
+        heure: "20:45",
+        scorersHome: [],
+        scorersAway: [],
+        scoreHome: 0,
+        scoreAway: 0,
+      },
+      {
+        id: 2,
+        sport: "Formule 1",
+        competition: "Grand Prix",
+        journee: "4",
+        equipeHome: "Ferrari",
+        equipeAway: "Red Bull",
+        date: "2025-04-14",
+        heure: "14:00",
+        scorersHome: [],
+        scorersAway: [],
+        scoreHome: 0,
+        scoreAway: 0,
+      }
+    ];
 
     function renderMatches() {
-      const selectedComp = filterCompetition.value;
-      const filtered = matches
-        .filter(m => !selectedComp || m.competition === selectedComp)
-        .sort((a, b) => new Date(`${a.date}T${a.time}`) - new Date(`${b.date}T${b.time}`));
+      const container = document.getElementById("match-container");
+      const sport = document.getElementById("filter-sport").value;
+      const comp = document.getElementById("filter-competition").value;
+      const date = document.getElementById("filter-date").value;
+      const timezone = document.getElementById("timezone").value;
 
-      matchList.innerHTML = filtered.map(m => `
-        <div class="col-md-6">
-          <div class="card p-3 shadow-sm">
-            <h6 class="text-muted">${m.competition} — ${m.date} à ${m.time}</h6>
-            <p><strong>${m.home}</strong> ${m.homeScore ?? "-"} - ${m.awayScore ?? "-"} <strong>${m.away}</strong></p>
-          </div>
-        </div>
-      `).join('');
-    }
+      container.innerHTML = "";
 
-    function updateCalendar() {
-      calendar.removeAllEvents();
-      matches.forEach(m => {
-        calendar.addEvent({
-          title: `${m.home} vs ${m.away} (${m.competition})`,
-          start: `${m.date}T${m.time}`,
-        });
+      const now = new Date().toLocaleString("en-US", { timeZone: timezone });
+      const nowDate = new Date(now);
+
+      matches.forEach(match => {
+        const matchDate = new Date(`${match.date}T${match.heure}:00`);
+        const isLive = Math.abs(matchDate - nowDate) < 2 * 60 * 60 * 1000;
+
+        if (
+          (sport === "" || match.sport === sport) &&
+          (comp === "" || match.competition === comp) &&
+          (date === "" || match.date === date)
+        ) {
+          const div = document.createElement("div");
+          div.className = "match-card";
+          div.innerHTML = `
+            <h3>${match.sport} - ${match.competition} (J${match.journee}) ${isLive ? '<span class="live">🔴 LIVE</span>' : ''}</h3>
+            <p>${match.equipeHome} <strong id="score-home-${match.id}">${match.scoreHome}</strong> - 
+               <strong id="score-away-${match.id}">${match.scoreAway}</strong> ${match.equipeAway}</p>
+            <p>📅 ${match.date} à ${match.heure}</p>
+
+            <div>
+              <label>Buteur ${match.equipeHome} :</label>
+              <input id="buteur-home-${match.id}" placeholder="Nom">
+              <button onclick="addScorer(${match.id}, 'home')">Ajouter</button>
+              <ul class="scorers" id="list-home-${match.id}"></ul>
+            </div>
+
+            <div>
+              <label>Buteur ${match.equipeAway} :</label>
+              <input id="buteur-away-${match.id}" placeholder="Nom">
+              <button onclick="addScorer(${match.id}, 'away')">Ajouter</button>
+              <ul class="scorers" id="list-away-${match.id}"></ul>
+            </div>
+          `;
+          container.appendChild(div);
+
+          match.scorersHome.forEach(s => {
+            const li = document.createElement("li");
+            li.textContent = s;
+            document.getElementById(`list-home-${match.id}`).appendChild(li);
+          });
+          match.scorersAway.forEach(s => {
+            const li = document.createElement("li");
+            li.textContent = s;
+            document.getElementById(`list-away-${match.id}`).appendChild(li);
+          });
+        }
       });
-      calendar.render();
     }
 
-    function updateFilterOptions() {
-      const comps = Array.from(new Set(matches.map(m => m.competition))).sort();
-      filterCompetition.innerHTML = `<option value="">Toutes les compétitions</option>` +
-        comps.map(c => `<option value="${c}">${c}</option>`).join('');
+    function addScorer(id, side) {
+      const match = matches.find(m => m.id === id);
+      const input = document.getElementById(`buteur-${side}-${id}`);
+      const list = document.getElementById(`list-${side}-${id}`);
+      const score = document.getElementById(`score-${side}-${id}`);
+
+      if (input.value.trim() !== "") {
+        const li = document.createElement("li");
+        li.textContent = input.value;
+        list.appendChild(li);
+        match[`scorers${side.charAt(0).toUpperCase() + side.slice(1)}`].push(input.value);
+        match[`score${side.charAt(0).toUpperCase() + side.slice(1)}`]++;
+        score.textContent = match[`score${side.charAt(0).toUpperCase() + side.slice(1)}`];
+        input.value = "";
+      }
     }
+
+    renderMatches();
   </script>
 </body>
 </html>
+
 
 
 
