@@ -2,145 +2,146 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Planning Sports Complet</title>
+  <title>🏟️ Dashboard Multisport</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/main.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/main.min.js"></script>
   <style>
-    .team-logo { width: 30px; height: 30px; object-fit: contain; }
-    .vs { font-weight: bold; font-size: 1.2rem; margin: 0 10px; }
-    #calendar { max-width: 900px; margin: 2rem auto; }
+    .team-logo {
+      width: 30px;
+      height: 30px;
+      object-fit: contain;
+    }
+    .vs {
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+    .live {
+      color: red;
+      font-weight: bold;
+    }
+    .card:hover {
+      transform: scale(1.01);
+      transition: 0.2s;
+    }
   </style>
 </head>
 <body class="bg-light">
 <div class="container py-4">
-  <h1 class="text-center mb-4">🏅 Planning Multi-Sport</h1>
+  <h1 class="text-center mb-4">📅 Matchs Multisport en direct</h1>
 
-  <div class="row mb-3">
+  <div class="row mb-4">
     <div class="col-md-4">
-      <label class="form-label">🏆 Compétition</label>
-      <select id="competitionSelect" class="form-select">
-        <option value="all">Toutes</option>
-        <option value="Ligue 1">Ligue 1</option>
-        <option value="MotoGP">MotoGP</option>
-        <option value="F1">Formule 1</option>
-        <!-- autres compétitions... -->
+      <label for="sportSelect">🏀 Sport</label>
+      <select id="sportSelect" class="form-select">
+        <option value="all">Tous</option>
+        <option value="football">Football</option>
+        <option value="f1">Formule 1</option>
+        <option value="tennis">Tennis</option>
       </select>
     </div>
     <div class="col-md-4">
-      <label class="form-label">📅 Date</label>
-      <input type="date" id="dateSelect" class="form-control">
-    </div>
-    <div class="col-md-4">
-      <label class="form-label">🌍 Zone</label>
-      <select id="regionSelect" class="form-select">
-        <option value="all">Toutes</option>
-        <option value="Europe">Europe</option>
-        <option value="Amérique">Amérique</option>
+      <label for="daySelect">📆 Jour</label>
+      <select id="daySelect" class="form-select">
+        <option value="0">Aujourd’hui</option>
+        <option value="1">Demain</option>
+        <option value="2">Semaine</option>
       </select>
     </div>
-  </div>
-
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5>📆 Vue Calendrier</h5>
-    <button class="btn btn-outline-primary" onclick="loadCalendar()">Afficher</button>
+    <div class="col-md-4 d-flex align-items-end">
+      <button class="btn btn-primary w-100" onclick="renderMatches()">🔄 Rafraîchir</button>
+    </div>
   </div>
 
   <div id="match-list" class="row g-4"></div>
-
-  <div id="calendar"></div>
 </div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-  import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+<script>
+  const matches = [
+    {
+      id: 1,
+      date: new Date().toISOString().split('T')[0],
+      sport: "football",
+      competition: "Ligue 1",
+      time: "20:45",
+      live: true,
+      home: { name: "PSG", logo: "https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg", score: 2 },
+      away: { name: "OM", logo: "https://upload.wikimedia.org/wikipedia/en/3/35/Olympique_Marseille_logo.svg", score: 1 },
+      chain: { name: "Canal+", link: "https://www.canalplus.com/", payant: true }
+    },
+    {
+      id: 2,
+      date: new Date().toISOString().split('T')[0],
+      sport: "f1",
+      competition: "Grand Prix Australie",
+      time: "07:00",
+      live: false,
+      home: { name: "Mercedes", logo: "https://upload.wikimedia.org/wikipedia/en/e/e8/Mercedes-Benz_logo_2010.svg", score: null },
+      away: { name: "Red Bull", logo: "https://upload.wikimedia.org/wikipedia/en/6/6e/Red_Bull_Racing_logo.svg", score: null },
+      chain: { name: "F1 TV", link: "https://f1tv.formula1.com/", payant: true }
+    },
+    {
+      id: 3,
+      date: new Date().toISOString().split('T')[0],
+      sport: "tennis",
+      competition: "ATP Monte-Carlo",
+      time: "15:30",
+      live: false,
+      home: { name: "Djokovic", logo: "🎾", score: 3 },
+      away: { name: "Nadal", logo: "🎾", score: 2 },
+      chain: { name: "Eurosport", link: "https://www.eurosport.fr/", payant: false }
+    }
+  ];
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBToR5BXaPHsg8GgMosJBMompqUU1LBGG8",
-    authDomain: "planning-sports.firebaseapp.com",
-    projectId: "planning-sports",
-    storageBucket: "planning-sports.appspot.com",
-    messagingSenderId: "808656601330",
-    appId: "1:808656601330:web:02c6c6c54e4cc705d6d06b"
-  };
+  function renderMatches() {
+    const sportFilter = document.getElementById("sportSelect").value;
+    const dayFilter = parseInt(document.getElementById("daySelect").value);
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  async function fetchMatches() {
-    const comp = document.getElementById("competitionSelect").value;
-    const region = document.getElementById("regionSelect").value;
-    const date = document.getElementById("dateSelect").value;
-    
-    const ref = collection(db, "matches");
-    const snapshot = await getDocs(ref);
-    const matches = [];
-
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      if ((comp === 'all' || data.competition === comp) &&
-          (region === 'all' || data.region === region) &&
-          (!date || data.date === date)) {
-        matches.push(data);
-      }
+    const today = new Date();
+    const filtered = matches.filter(match => {
+      const matchDate = new Date(match.date);
+      const dateMatch = matchDate.toDateString() === new Date(today.setDate(today.getDate() + dayFilter)).toDateString();
+      return (sportFilter === "all" || match.sport === sportFilter) && (dayFilter === 2 || dateMatch);
     });
 
-    renderMatches(matches);
-    return matches;
-  }
-
-  function renderMatches(matches) {
     const matchList = document.getElementById("match-list");
-    matchList.innerHTML = matches.map(match => `
-      <div class="col-md-6">
-        <div class="card p-3 shadow-sm">
-          <h6 class="text-muted">${match.competition} — ${match.date}</h6>
-          <div class="d-flex align-items-center justify-content-between">
-            <div class="d-flex align-items-center">
-              <img src="${match.home.logo}" class="team-logo me-2" alt="${match.home.name}">
-              <span>${match.home.name}</span>
+    matchList.innerHTML = "";
+
+    if (filtered.length === 0) {
+      matchList.innerHTML = `<p class="text-center">Aucun match trouvé</p>`;
+      return;
+    }
+
+    filtered.forEach(match => {
+      const liveBadge = match.live ? `<span class="live">🔴 LIVE</span>` : "";
+      const score = match.score !== null ? `${match.home.score} - ${match.away.score}` : "vs";
+      const chain = match.chain;
+      const linkText = chain.payant ? `${chain.name} (Accès payant)` : `${chain.name}`;
+      const chainLink = `<a href="${chain.link}" target="_blank">${linkText}</a>`;
+
+      matchList.innerHTML += `
+        <div class="col-md-6">
+          <div class="card p-3 shadow-sm">
+            <h6 class="text-muted">${match.competition} — ${match.date}</h6>
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="d-flex align-items-center">
+                <img src="${match.home.logo}" class="team-logo me-2">
+                <strong>${match.home.name}</strong>
+              </div>
+              <div class="vs">${match.home.score ?? "-"} - ${match.away.score ?? "-"}</div>
+              <div class="d-flex align-items-center">
+                <strong>${match.away.name}</strong>
+                <img src="${match.away.logo}" class="team-logo ms-2">
+              </div>
             </div>
-            <div class="vs">${match.score || "vs"}</div>
-            <div class="d-flex align-items-center">
-              <span>${match.away.name}</span>
-              <img src="${match.away.logo}" class="team-logo ms-2" alt="${match.away.name}">
-            </div>
+            <p class="mb-0 mt-2">Heure : ${match.time} ${liveBadge}</p>
+            <p class="mb-0">📺 Diffusion : ${chainLink}</p>
           </div>
-          <p class="mb-0 mt-2">Heure : ${match.time}</p>
-          ${match.channel ? `<a href="${match.paid ? match.streaming : '#'}" target="_blank" class="btn btn-sm mt-2 ${match.paid ? 'btn-danger' : 'btn-success'}">📺 ${match.channel}</a>` : ''}
         </div>
-      </div>
-    `).join('');
-  }
-
-  async function loadCalendar() {
-    const matches = await fetchMatches();
-    const calendarEl = document.getElementById("calendar");
-    calendarEl.innerHTML = "";
-
-    const calendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: 'dayGridMonth',
-      locale: 'fr',
-      events: matches.map(m => ({
-        title: `${m.home.name} vs ${m.away.name}`,
-        start: `${m.date}T${m.time}:00`,
-        url: m.streaming || null
-      }))
+      `;
     });
-    calendar.render();
   }
 
-  document.getElementById("competitionSelect").addEventListener("change", fetchMatches);
-  document.getElementById("regionSelect").addEventListener("change", fetchMatches);
-  document.getElementById("dateSelect").addEventListener("change", fetchMatches);
-
-  fetchMatches();
+  renderMatches();
 </script>
 </body>
 </html>
-
-
-
-
-
