@@ -1,147 +1,157 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>🏟️ Dashboard Multisport</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🗓️ Planning Sportif</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/main.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/main.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    .team-logo {
-      width: 30px;
-      height: 30px;
-      object-fit: contain;
-    }
-    .vs {
-      font-weight: bold;
-      font-size: 1.2rem;
-    }
-    .live {
-      color: red;
-      font-weight: bold;
-    }
-    .card:hover {
-      transform: scale(1.01);
-      transition: 0.2s;
-    }
+    body { background-color: #f9f9f9; }
+    .match-card { border-radius: 1rem; padding: 1rem; margin-bottom: 1rem; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .team-logo { width: 32px; height: 32px; object-fit: contain; }
+    .live-indicator { color: red; font-weight: bold; }
+    .fc { margin-top: 2rem; }
   </style>
 </head>
-<body class="bg-light">
+<body>
 <div class="container py-4">
-  <h1 class="text-center mb-4">📅 Matchs Multisport en direct</h1>
+  <h1 class="text-center mb-4">📅 Planning Sportif & Matchs en Temps Réel</h1>
 
-  <div class="row mb-4">
-    <div class="col-md-4">
-      <label for="sportSelect">🏀 Sport</label>
-      <select id="sportSelect" class="form-select">
-        <option value="all">Tous</option>
-        <option value="football">Football</option>
-        <option value="f1">Formule 1</option>
-        <option value="tennis">Tennis</option>
+  <!-- Filtres -->
+  <div class="row mb-3">
+    <div class="col-md-3">
+      <input type="date" id="filterDate" class="form-control" />
+    </div>
+    <div class="col-md-3">
+      <select id="filterSport" class="form-select">
+        <option value="">Tous les sports</option>
+        <option value="Football">⚽ Football</option>
+        <option value="F1">🏎️ F1</option>
+        <option value="MotoGP">🏍️ MotoGP</option>
       </select>
     </div>
-    <div class="col-md-4">
-      <label for="daySelect">📆 Jour</label>
-      <select id="daySelect" class="form-select">
-        <option value="0">Aujourd’hui</option>
-        <option value="1">Demain</option>
-        <option value="2">Semaine</option>
-      </select>
+    <div class="col-md-3">
+      <input type="text" id="filterCompetition" placeholder="Compétition..." class="form-control" />
     </div>
-    <div class="col-md-4 d-flex align-items-end">
-      <button class="btn btn-primary w-100" onclick="renderMatches()">🔄 Rafraîchir</button>
+    <div class="col-md-3 d-flex justify-content-end">
+      <button id="exportBtn" class="btn btn-outline-secondary">📤 Export PDF</button>
     </div>
   </div>
 
-  <div id="match-list" class="row g-4"></div>
+  <!-- Liste des matchs -->
+  <div id="matches"></div>
+
+  <!-- Calendrier -->
+  <div id="calendar"></div>
+
+  <!-- Chart -->
+  <canvas id="statsChart" class="my-4"></canvas>
 </div>
 
 <script>
-  const matches = [
-    {
-      id: 1,
-      date: new Date().toISOString().split('T')[0],
-      sport: "football",
-      competition: "Ligue 1",
-      time: "20:45",
-      live: true,
-      home: { name: "PSG", logo: "https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg", score: 2 },
-      away: { name: "OM", logo: "https://upload.wikimedia.org/wikipedia/en/3/35/Olympique_Marseille_logo.svg", score: 1 },
-      chain: { name: "Canal+", link: "https://www.canalplus.com/", payant: true }
-    },
-    {
-      id: 2,
-      date: new Date().toISOString().split('T')[0],
-      sport: "f1",
-      competition: "Grand Prix Australie",
-      time: "07:00",
-      live: false,
-      home: { name: "Mercedes", logo: "https://upload.wikimedia.org/wikipedia/en/e/e8/Mercedes-Benz_logo_2010.svg", score: null },
-      away: { name: "Red Bull", logo: "https://upload.wikimedia.org/wikipedia/en/6/6e/Red_Bull_Racing_logo.svg", score: null },
-      chain: { name: "F1 TV", link: "https://f1tv.formula1.com/", payant: true }
-    },
-    {
-      id: 3,
-      date: new Date().toISOString().split('T')[0],
-      sport: "tennis",
-      competition: "ATP Monte-Carlo",
-      time: "15:30",
-      live: false,
-      home: { name: "Djokovic", logo: "🎾", score: 3 },
-      away: { name: "Nadal", logo: "🎾", score: 2 },
-      chain: { name: "Eurosport", link: "https://www.eurosport.fr/", payant: false }
-    }
-  ];
+const matchesContainer = document.getElementById("matches");
+const API_KEY = "demo"; // Remplace avec une clé API-Football gratuite
+const endpoint = "https://v3.football.api-sports.io/fixtures";
 
-  function renderMatches() {
-    const sportFilter = document.getElementById("sportSelect").value;
-    const dayFilter = parseInt(document.getElementById("daySelect").value);
+// Récupère les matchs (football uniquement ici)
+async function fetchMatches() {
+  const res = await fetch(endpoint + "?next=20", {
+    headers: { "x-apisports-key": API_KEY },
+  });
+  const data = await res.json();
+  return data.response || [];
+}
 
-    const today = new Date();
-    const filtered = matches.filter(match => {
-      const matchDate = new Date(match.date);
-      const dateMatch = matchDate.toDateString() === new Date(today.setDate(today.getDate() + dayFilter)).toDateString();
-      return (sportFilter === "all" || match.sport === sportFilter) && (dayFilter === 2 || dateMatch);
-    });
+function isLive(match) {
+  return match.fixture.status.short === "1H" || match.fixture.status.short === "2H";
+}
 
-    const matchList = document.getElementById("match-list");
-    matchList.innerHTML = "";
-
-    if (filtered.length === 0) {
-      matchList.innerHTML = `<p class="text-center">Aucun match trouvé</p>`;
-      return;
-    }
-
-    filtered.forEach(match => {
-      const liveBadge = match.live ? `<span class="live">🔴 LIVE</span>` : "";
-      const score = match.score !== null ? `${match.home.score} - ${match.away.score}` : "vs";
-      const chain = match.chain;
-      const linkText = chain.payant ? `${chain.name} (Accès payant)` : `${chain.name}`;
-      const chainLink = `<a href="${chain.link}" target="_blank">${linkText}</a>`;
-
-      matchList.innerHTML += `
-        <div class="col-md-6">
-          <div class="card p-3 shadow-sm">
-            <h6 class="text-muted">${match.competition} — ${match.date}</h6>
-            <div class="d-flex justify-content-between align-items-center">
-              <div class="d-flex align-items-center">
-                <img src="${match.home.logo}" class="team-logo me-2">
-                <strong>${match.home.name}</strong>
-              </div>
-              <div class="vs">${match.home.score ?? "-"} - ${match.away.score ?? "-"}</div>
-              <div class="d-flex align-items-center">
-                <strong>${match.away.name}</strong>
-                <img src="${match.away.logo}" class="team-logo ms-2">
-              </div>
-            </div>
-            <p class="mb-0 mt-2">Heure : ${match.time} ${liveBadge}</p>
-            <p class="mb-0">📺 Diffusion : ${chainLink}</p>
-          </div>
+function renderMatches(matches) {
+  matchesContainer.innerHTML = "";
+  matches.forEach((m) => {
+    const div = document.createElement("div");
+    div.className = "match-card";
+    div.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+          <img src="${m.teams.home.logo}" class="team-logo me-2" />
+          <strong>${m.teams.home.name}</strong>
         </div>
-      `;
-    });
-  }
+        <div class="text-center">
+          <div>${m.fixture.date.split("T")[0]} ${m.fixture.date.split("T")[1].slice(0, 5)}</div>
+          <div class="${isLive(m) ? 'live-indicator' : ''}">
+            ${isLive(m) ? '🔴 En cours' : '⏰ À venir'}
+          </div>
+          <div><a href="https://livetv.sx/frx/" target="_blank">${m.league.name}</a></div>
+        </div>
+        <div class="d-flex align-items-center">
+          <strong>${m.teams.away.name}</strong>
+          <img src="${m.teams.away.logo}" class="team-logo ms-2" />
+        </div>
+      </div>
+    `;
+    matchesContainer.appendChild(div);
+  });
+}
 
-  renderMatches();
+function initCalendar(matches) {
+  const calendarEl = document.getElementById("calendar");
+  const events = matches.map((m) => ({
+    title: `${m.teams.home.name} vs ${m.teams.away.name}`,
+    date: m.fixture.date.split("T")[0],
+    backgroundColor: isLive(m) ? "red" : "blue",
+  }));
+  const calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    events,
+  });
+  calendar.render();
+}
+
+function generateStatsChart(matches) {
+  const ctx = document.getElementById("statsChart").getContext("2d");
+  const comps = {};
+  matches.forEach(m => {
+    comps[m.league.name] = (comps[m.league.name] || 0) + 1;
+  });
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(comps),
+      datasets: [{
+        label: 'Matchs par compétition',
+        data: Object.values(comps),
+        backgroundColor: 'rgba(54, 162, 235, 0.6)'
+      }]
+    }
+  });
+}
+
+function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.text("Planning des matchs", 10, 10);
+  let y = 20;
+  document.querySelectorAll('.match-card').forEach(card => {
+    doc.text(card.innerText.slice(0, 90), 10, y);
+    y += 10;
+  });
+  doc.save("planning_matchs.pdf");
+}
+
+document.getElementById("exportBtn").addEventListener("click", exportPDF);
+
+fetchMatches().then(matches => {
+  renderMatches(matches);
+  initCalendar(matches);
+  generateStatsChart(matches);
+});
 </script>
 </body>
 </html>
+
