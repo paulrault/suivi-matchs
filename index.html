@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <title>Planning Sportif</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <meta charset="UTF-8">
+  <title>Planning Sports</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script type="module" src="/main.js" defer></script>
   <style>
     .team-logo {
       width: 30px;
@@ -16,173 +17,109 @@
       font-size: 1.2rem;
       margin: 0 10px;
     }
-    .live-badge {
-      color: red;
-      font-weight: bold;
-      margin-left: 8px;
-    }
-    .pagination {
-      justify-content: center;
-    }
   </style>
 </head>
 <body class="bg-light">
   <div class="container py-4">
-    <h1 class="text-center mb-4">🏟️ Planning Sportif</h1>
-
-    <!-- Filtres -->
-    <div class="row mb-4 g-3">
-      <div class="col-md-4">
-        <label class="form-label">🎮 Sport</label>
-        <select id="sportSelect" class="form-select">
-          <option value="all">Tous</option>
-          <option value="Football">Football</option>
-          <option value="Basketball">Basketball</option>
-          <option value="Sports mécaniques">Sports mécaniques</option>
-        </select>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">📅 Jour</label>
-        <select id="daySelect" class="form-select">
-          <option value="0">Aujourd’hui</option>
-          <option value="1">Demain</option>
-          <option value="2">Après-demain</option>
-        </select>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">🏆 Compétition</label>
-        <input type="text" id="competitionInput" class="form-control" placeholder="Ligue 1, NBA..." />
-      </div>
-    </div>
-
-    <div class="mb-3 d-flex justify-content-between">
-      <button class="btn btn-outline-primary" id="weekBtn">🔁 Voir la semaine</button>
-      <p class="text-muted mb-0" id="refresh-note">🔄 Auto MAJ toutes les 60s</p>
-    </div>
-
+    <h1 class="text-center mb-4">⚽ Matchs à venir</h1>
     <div id="match-list" class="row g-4"></div>
-    <nav>
-      <ul class="pagination mt-4" id="pagination"></ul>
-    </nav>
   </div>
-
-  <script>
-    const baseDate = new Date();
-    const getDateWithOffset = (offset) => {
-      const date = new Date(baseDate);
-      date.setDate(date.getDate() + offset);
-      return date.toISOString().split('T')[0];
-    };
-
-    // 🎯 Données fictives (intègre plus tard Firebase ici)
-    const matches = [
-      // Exemple football
-      { date: getDateWithOffset(0), time: "20:45", competition: "Ligue 1", sport: "Football", channel: { name: "Amazon Prime", paid: true, url: "https://primevideo.com" }, home: { name: "PSG", logo: "https://upload.wikimedia.org/wikipedia/en/a/a7/Paris_Saint-Germain_F.C..svg", score: null }, away: { name: "Lyon", logo: "https://upload.wikimedia.org/wikipedia/en/c/c6/Olympique_Lyonnais_logo.svg", score: null } },
-      { date: getDateWithOffset(1), time: "18:30", competition: "Premier League", sport: "Football", channel: { name: "Canal+", paid: true, url: "https://www.canalplus.com" }, home: { name: "Man City", logo: "#", score: 1 }, away: { name: "Liverpool", logo: "#", score: 1 } },
-      { date: getDateWithOffset(2), time: "21:00", competition: "Serie A", sport: "Football", channel: { name: "BeIN", paid: true, url: "https://www.beinsports.com" }, home: { name: "Juventus", logo: "#", score: null }, away: { name: "AC Milan", logo: "#", score: null } },
-      { date: getDateWithOffset(3), time: "19:00", competition: "Bundesliga", sport: "Football", channel: { name: "Free Sports", paid: false, url: "https://freesports.tv" }, home: { name: "Bayern", logo: "#", score: null }, away: { name: "Dortmund", logo: "#", score: null } },
-      // Basket
-      { date: getDateWithOffset(2), time: "02:30", competition: "NBA", sport: "Basketball", channel: { name: "NBA League Pass", paid: true, url: "https://www.nba.com/leaguepass" }, home: { name: "Lakers", logo: "#", score: null }, away: { name: "Celtics", logo: "#", score: null } },
-      // F1
-      { date: getDateWithOffset(5), time: "15:00", competition: "F1 GP Espagne", sport: "Sports mécaniques", channel: { name: "F1 TV", paid: true, url: "https://www.f1tv.com" }, home: { name: "Ferrari", logo: "#", score: null }, away: { name: "Red Bull", logo: "#", score: null } }
-    ];
-
-    const matchList = document.getElementById("match-list");
-    const pagination = document.getElementById("pagination");
-    const sportSelect = document.getElementById("sportSelect");
-    const daySelect = document.getElementById("daySelect");
-    const weekBtn = document.getElementById("weekBtn");
-    const competitionInput = document.getElementById("competitionInput");
-
-    let showWeek = false;
-    let currentPage = 1;
-    const matchesPerPage = 5;
-
-    function getCountdownText(dateStr, timeStr) {
-      const matchDate = new Date(`${dateStr}T${timeStr}:00`);
-      const now = new Date();
-      const diff = matchDate - now;
-
-      if (diff <= 0 && diff > -2 * 60 * 60 * 1000) return "🔴 Match en cours";
-      if (diff <= -2 * 60 * 60 * 1000) return "✅ Terminé";
-
-      const minutes = Math.floor((diff / 1000 / 60) % 60);
-      const hours = Math.floor((diff / 1000 / 60 / 60));
-      return `⏳ Dans ${hours}h ${minutes}min`;
-    }
-
-    function renderMatches() {
-      const sport = sportSelect.value;
-      const day = parseInt(daySelect.value);
-      const comp = competitionInput.value.toLowerCase();
-      const targetDate = getDateWithOffset(day);
-
-      let filtered = matches.filter(m =>
-        (sport === "all" || m.sport === sport)
-        && (showWeek || m.date === targetDate)
-        && (comp === "" || m.competition.toLowerCase().includes(comp))
-      );
-
-      const totalPages = Math.ceil(filtered.length / matchesPerPage);
-      const start = (currentPage - 1) * matchesPerPage;
-      const paginated = filtered.slice(start, start + matchesPerPage);
-
-      matchList.innerHTML = "";
-      if (paginated.length === 0) {
-        matchList.innerHTML = `<p class="text-center">Aucun événement trouvé.</p>`;
-        pagination.innerHTML = "";
-        return;
-      }
-
-      paginated.forEach(m => {
-        const live = getCountdownText(m.date, m.time).includes("🔴");
-        const div = document.createElement("div");
-        div.className = "col-md-6";
-        div.innerHTML = `
-          <div class="card shadow-sm p-3">
-            <h6 class="text-muted mb-1">${m.sport} — ${m.competition} — ${m.date}</h6>
-            <div class="d-flex align-items-center justify-content-between">
-              <div class="d-flex align-items-center">
-                <img src="${m.home.logo}" class="team-logo me-2" alt="${m.home.name}">
-                <span>${m.home.name}</span>
-              </div>
-              <div class="vs">${m.home.score ?? ""} - ${m.away.score ?? ""}</div>
-              <div class="d-flex align-items-center">
-                <span>${m.away.name}</span>
-                <img src="${m.away.logo}" class="team-logo ms-2" alt="${m.away.name}">
-              </div>
-            </div>
-            <p class="mb-1 mt-2">Heure : ${m.time} ${live ? '<span class="live-badge">🔴 Live</span>' : ""}</p>
-            <p class="mb-0">📺 Diffusion : <a href="${m.channel.url}" target="_blank">${m.channel.name}${m.channel.paid ? " 🔒" : ""}</a></p>
-            <p class="text-primary">${getCountdownText(m.date, m.time)}</p>
-          </div>
-        `;
-        matchList.appendChild(div);
-      });
-
-      // Pagination
-      pagination.innerHTML = "";
-      for (let i = 1; i <= totalPages; i++) {
-        const li = document.createElement("li");
-        li.className = "page-item " + (i === currentPage ? "active" : "");
-        li.innerHTML = `<button class="page-link">${i}</button>`;
-        li.addEventListener("click", () => {
-          currentPage = i;
-          renderMatches();
-        });
-        pagination.appendChild(li);
-      }
-    }
-
-    sportSelect.addEventListener("change", () => { currentPage = 1; renderMatches(); });
-    daySelect.addEventListener("change", () => { showWeek = false; currentPage = 1; renderMatches(); });
-    competitionInput.addEventListener("input", () => { currentPage = 1; renderMatches(); });
-    weekBtn.addEventListener("click", () => { showWeek = true; currentPage = 1; renderMatches(); });
-
-    setInterval(renderMatches, 60000);
-    renderMatches();
-  </script>
 </body>
 </html>
+
+<!-- main.js -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
+import { getFirestore, collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBToR5BXaPHsg8GgMosJBMompqUU1LBGG8",
+  authDomain: "planning-sports.firebaseapp.com",
+  projectId: "planning-sports",
+  storageBucket: "planning-sports.appspot.com",
+  messagingSenderId: "808656601330",
+  appId: "1:808656601330:web:02c6c6c54e4cc705d6d06b"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+let loadedMatches = [];
+
+async function getMatches() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const q = query(
+      collection(db, "matches"),
+      where("date", ">=", today),
+      orderBy("date"),
+      orderBy("time")
+    );
+    const querySnapshot = await getDocs(q);
+    loadedMatches = [];
+    querySnapshot.forEach((doc) => {
+      loadedMatches.push({ id: doc.id, ...doc.data() });
+    });
+    console.log("Matchs chargés:", loadedMatches);
+  } catch (error) {
+    console.error("Erreur de chargement:", error);
+  }
+}
+
+function renderMatches() {
+  const container = document.getElementById("match-list");
+  container.innerHTML = "";
+  const now = new Date();
+
+  if (loadedMatches.length === 0) {
+    container.innerHTML = `<p class="text-center text-muted">Aucun match trouvé.</p>`;
+    return;
+  }
+
+  loadedMatches.forEach(match => {
+    const matchDateTime = new Date(`${match.date}T${match.time}`);
+    const diff = matchDateTime - now;
+    const isLive = diff <= 0 && diff > -2 * 60 * 60 * 1000;
+    const isUpcoming = diff > 0;
+
+    const countdown = isUpcoming
+      ? `Débute dans ${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}min`
+      : isLive
+      ? `<span class="text-danger fw-bold">🔴 EN COURS</span>`
+      : `<span class="text-muted">Terminé</span>`;
+
+    const broadcastHtml = match.broadcast?.name
+      ? `<p>📺 ${match.broadcast.paid ? `<a href="${match.broadcast.url}" target="_blank">${match.broadcast.name}</a>` : match.broadcast.name}</p>`
+      : `<p>📺 Non communiqué</p>`;
+
+    container.innerHTML += `
+      <div class="col-md-6">
+        <div class="card p-3 shadow-sm mb-3">
+          <h6 class="text-muted">${match.competition} — ${match.sport || "Sport"} — ${match.date}</h6>
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+              <img src="${match.home.logo}" class="team-logo me-2" alt="${match.home.name}">
+              <span>${match.home.name}</span>
+            </div>
+            <div class="vs">${match.home.score ?? ""} - ${match.away.score ?? ""}</div>
+            <div class="d-flex align-items-center">
+              <span>${match.away.name}</span>
+              <img src="${match.away.logo}" class="team-logo ms-2" alt="${match.away.name}">
+            </div>
+          </div>
+          <p class="mb-0 mt-2">🕒 Heure : ${match.time}</p>
+          ${broadcastHtml}
+          <p class="text-primary">${countdown}</p>
+        </div>
+      </div>
+    `;
+  });
+}
+
+(async () => {
+  await getMatches();
+  renderMatches();
+})();
+</script>
+
 
 
